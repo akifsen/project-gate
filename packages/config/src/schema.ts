@@ -47,12 +47,25 @@ export interface ProjectConfig {
   environment?: EnvironmentPolicy;
   constitution?: string;
   timeouts: { commandMs: number; httpMs: number; browserMs: number };
+  discoverBaseline: boolean;
 }
 
 export const projectFileSchema = z
   .object({
     schema_version: z.literal(1),
     project: z.object({ name: z.string().min(1) }).strict(),
+    discovery: z
+      .object({
+        package_manager: z.string().nullable().default(null),
+        languages: z.array(z.string()).default([]),
+        frontend: z.string().nullable().default(null),
+        backend: z.string().nullable().default(null),
+        browser_app: z.boolean().default(false),
+        git: z.boolean().default(false),
+        runtime_proposal: z.string().nullable().default(null),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -134,6 +147,7 @@ export const verificationFileSchema = z
       })
       .strict()
       .default({ command_ms: 300_000, http_ms: 15_000, browser_ms: 30_000 }),
+    discover_baseline: z.boolean().default(true),
     commands: z
       .array(
         z

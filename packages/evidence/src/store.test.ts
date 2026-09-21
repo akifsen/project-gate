@@ -18,6 +18,11 @@ describe("run store", () => {
     expect(fs.existsSync(path.join(root, ".projectgate", "runtime", "runs", "run-a", "packet.json"))).toBe(true);
     reopened.close();
   });
+
+  it("does not import the experimental node sqlite module", () => {
+    const source = fs.readFileSync(new URL("./store.ts", import.meta.url), "utf8");
+    expect(source).not.toContain("node:sqlite");
+  });
 });
 
 function sample(runId: string, verdict: ReleasePacket["verdict"]["state"]): ReleasePacket {

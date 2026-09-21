@@ -27,7 +27,7 @@ export function assemblePacket(input: {
       requiredEvidence: criterion.evidence,
       checks: input.checks
         .filter((check) => check.criterionId === criterion.id)
-        .map((check) => ({ status: check.status, evidenceClass: check.producedEvidence })),
+        .map((check) => ({ status: check.status, evidenceClass: check.producedEvidence, ...(check.error ? { error: check.error } : {}) })),
     }),
   );
   const invariants = input.contract.invariants.map((invariant) =>
@@ -37,7 +37,7 @@ export function assemblePacket(input: {
       requiredEvidence: invariant.evidence,
       checks: input.checks
         .filter((check) => check.criterionId === invariant.id)
-        .map((check) => ({ status: check.status, evidenceClass: check.producedEvidence })),
+        .map((check) => ({ status: check.status, evidenceClass: check.producedEvidence, ...(check.error ? { error: check.error } : {}) })),
     }),
   );
   const items = [...acceptance, ...invariants];
@@ -46,6 +46,9 @@ export function assemblePacket(input: {
     openFindings: input.findings.map((finding) => ({ severity: finding.severity })),
     humanReviewRequired: input.humanReviewRequired,
   });
+  for (const item of items.filter((criterion) => criterion.required && criterion.state === "UNKNOWN")) {
+    verdict.reasons.push(`${item.id}: ${item.reason}`);
+  }
   const required = items.filter((item) => item.required);
   return {
     schemaVersion: 1,

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
+import { discoverCommands } from "./discover.js";
 import {
   architectureFileSchema,
   environmentFileSchema,
@@ -12,6 +13,7 @@ import {
   uiFileSchema,
   verificationFileSchema,
   type ProjectConfig,
+  type ShellCommandConfig,
 } from "./schema.js";
 
 const ruleDocumentSchema = z
@@ -54,8 +56,8 @@ export function loadProject(root: string): ProjectConfig {
     root,
     schemaVersion: 1,
     project: { name: projectFile.project.name },
-    commands: verification.commands.map((command) => {
-      const mapped: ProjectConfig["commands"][number] = {
+    commands: mergeCommands(root, verification.discover_baseline, verification.commands.map((command) => {
+      const mapped: ShellCommandConfig = {
         id: command.id,
         title: command.title,
         command: command.command,
@@ -66,7 +68,8 @@ export function loadProject(root: string): ProjectConfig {
       };
       if (command.criterion) mapped.criterionId = command.criterion;
       return mapped;
-    }),
+    })),
+    discoverBaseline: verification.discover_baseline,
     architecture: toArchitecturePolicy(architectureFile, extraRules),
     ui: {
       requiredStates: ui.required_states,
@@ -90,6 +93,23 @@ export function loadProject(root: string): ProjectConfig {
       browserMs: verification.timeouts.browser_ms,
     },
   };
+}
+
+function mergeCommands(root: string, discoverBaseline: boolean, configured: ShellCommandConfig[]): ShellCommandConfig[] {
+  if (!discoverBaseline) return configured;
+  const known = new Set(configured.map((command) => command.id));
+  const discovered = discoverCommands(root)
+    .filter((command) => !known.has(command.id))
+    .map((command) => ({
+      id: command.id,
+      title: command.title,
+      command: command.command,
+      args: command.args,
+      invalidatesOn: [],
+      evidence: "EXECUTABLE" as const,
+      group: command.group,
+    }));
+  return [...configured, ...discovered];
 }
 
 function readRuleFiles(dir: string): z.infer<typeof architectureFileSchema>["rules"] {

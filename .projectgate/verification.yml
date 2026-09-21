@@ -1,4 +1,5 @@
 schema_version: 1
+discover_baseline: false
 timeouts:
   command_ms: 300000
   http_ms: 15000

@@ -4,11 +4,11 @@
 
 - Domain verdict, evidence classes, findings, and release-packet records
 - Schema version 1 project configuration and change contracts
-- SQLite run store and filesystem artifacts
+- JSON run index and filesystem artifacts (ADR 0007)
 - Git change detection, import and route impact, inferred test proximity
 - Conservative evidence invalidation and selective verify
 - Shell, API, architecture, Playwright, axe-core, and visual verifiers
-- CLI: init, inspect, contract, audit, verify, report
+- CLI: init, doctor, inspect, contract, plan, audit, verify, report
 - MCP tools over the same core functions, plus a stdio server
 - Fix packets and a Cursor stop-hook adapter that is not enabled in this repo
 - Avatar fixture: broken change is BLOCKED, the fix is PASS, and the untouched mime check is carried
@@ -28,7 +28,7 @@
 ## Architectural decisions
 
 - npm workspaces (`docs/ADR/0001-npm-workspaces.md`)
-- SQLite plus HTML, no dashboard (`docs/ADR/0002-local-storage-and-no-dashboard.md`)
+- Local JSON run index plus HTML, no dashboard (`docs/ADR/0002-local-storage-and-no-dashboard.md`, `docs/ADR/0007-json-run-index.md`)
 - Explicit verdicts and exit codes (`docs/ADR/0003-verdict-and-exit-codes.md`)
 - Inference cannot pass a criterion (`docs/ADR/0004-inference-cannot-pass.md`)
 - Conservative invalidation (`docs/ADR/0005-conservative-invalidation.md`)
@@ -46,4 +46,4 @@
 
 ## Current V1 blockers
 
-- None. `npm run check` passed, and `npm run demo` audited the broken avatar fixture as BLOCKED, then `verify` returned PASS with the mime unit check carried forward.
+- None known from `npm run check` on 2026-09-22 (typecheck, lint, 39 tests, build). The supported install path is `npm install`, `npm run build`, `npm link`, then `projectgate --help`.

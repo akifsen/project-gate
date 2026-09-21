@@ -1,7 +1,7 @@
 import { toFixPacket } from "@projectgate/agent-adapter";
 import { initProject } from "@projectgate/config";
 import { loadContract, proposeContract } from "@projectgate/contracts";
-import { audit, inspectProject, latestPacket, planVerification, verify } from "@projectgate/core";
+import { audit, createChangeContract, inspectProject, latestPacket, planVerification, verify } from "@projectgate/core";
 import { modelFromEnv } from "@projectgate/model";
 import { product, ProjectGateError } from "@projectgate/shared";
 import fs from "node:fs";
@@ -35,7 +35,7 @@ export async function callTool(name: string, args: Record<string, unknown>): Pro
       return { ok: true, data: { change: inspected.change ?? null, surfaces: inspected.surfaces, gitError: inspected.gitError ?? null } };
     }
     case "projectgate.create_contract":
-      return { ok: true, data: await createContract(cwd, args) };
+      return { ok: true, data: await createContractTool(cwd, args) };
     case "projectgate.plan_verification":
       return {
         ok: true,
@@ -71,7 +71,7 @@ export async function callTool(name: string, args: Record<string, unknown>): Pro
   }
 }
 
-async function createContract(cwd: string, args: Record<string, unknown>): Promise<unknown> {
+async function createContractTool(cwd: string, args: Record<string, unknown>): Promise<unknown> {
   if (!fs.existsSync(path.join(cwd, product.configDir, "project.yml"))) initProject(cwd, path.basename(cwd));
   if (typeof args.description === "string") {
     const model = modelFromEnv();
@@ -79,8 +79,19 @@ async function createContract(cwd: string, args: Record<string, unknown>): Promi
     const output = path.join(cwd, product.configDir, "contract.proposed.yml");
     return proposeContract({ description: args.description, model, outputPath: output });
   }
+  if (typeof args.task === "string" || typeof args.fromFile === "string" || args.fromDiff === true) {
+    const draft = await createChangeContract({
+      root: cwd,
+      ...(typeof args.task === "string" ? { task: args.task } : {}),
+      ...(typeof args.fromFile === "string" ? { fromFile: args.fromFile } : {}),
+      ...(args.fromDiff === true ? { fromDiff: true } : {}),
+      ...(args.replace === true ? { replace: true } : {}),
+      ...(typeof args.against === "string" ? { against: args.against } : {}),
+    });
+    return { id: draft.contract.change.id, title: draft.contract.change.title, hash: draft.contract.hash, criteria: draft.contract.acceptance.map((item) => item.id), warnings: draft.warnings, filePath: draft.filePath };
+  }
   const file = path.join(cwd, product.configDir, "contract.yml");
-  if (!fs.existsSync(file)) throw new ProjectGateError(`No contract at ${file}.`, "CONTRACT", 2);
+  if (!fs.existsSync(file)) throw new ProjectGateError(`No contract at ${file}. Use task, fromFile, or fromDiff.`, "CONTRACT", 5);
   const contract = loadContract(file);
   return { id: contract.change.id, title: contract.change.title, hash: contract.hash, criteria: contract.acceptance.map((item) => item.id) };
 }

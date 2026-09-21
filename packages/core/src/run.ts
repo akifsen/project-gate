@@ -1,5 +1,6 @@
 import { loadProject } from "@projectgate/config";
 import { loadContract, type ChangeContract } from "@projectgate/contracts";
+import { requireActiveContract } from "./contract-flow.js";
 import type { Finding, ReleasePacket } from "@projectgate/domain";
 import { dependencySnapshotChanged } from "@projectgate/domain";
 import { openStore } from "@projectgate/evidence";
@@ -38,14 +39,7 @@ export async function verify(options: RunOptions): Promise<ReleasePacket> {
 async function runPipeline(options: RunOptions & { kind: "audit" | "verify" }): Promise<ReleasePacket> {
   const config = loadProject(options.root);
   const contractPath = options.contractPath ?? path.join(options.root, product.configDir, "contract.yml");
-  if (!fs.existsSync(contractPath)) {
-    throw new ProjectGateError(
-      `No change contract at ${contractPath}. Author one before auditing. An example is written by \`${product.command} init\`.`,
-      "CONTRACT",
-      2,
-    );
-  }
-  const contract = loadContract(contractPath);
+  const contract = requireActiveContract(options.root, contractPath);
   const before = fs.readFileSync(contractPath);
   const change = await collectChange(options.root, options.against);
   const registry = options.registry ?? createDefaultRegistry();
@@ -65,6 +59,23 @@ async function runPipeline(options: RunOptions & { kind: "audit" | "verify" }): 
         impact = { ...impact, edges: [...impact.edges, ...inferred.edges] };
         if (inferred.warning) limitations.push(inferred.warning);
       }
+    }
+    const unresolved = impact.unresolvedFiles ?? [];
+    if (unresolved.length > 0 && impact.surfaces.length === 0) {
+      limitations.push(
+        [
+          "IMPACT ANALYSIS INCOMPLETE",
+          `${change.files.length} files changed`,
+          `${unresolved.length} application files`,
+          "0 resolved product surfaces",
+          "Unable to confidently map:",
+          ...unresolved.slice(0, 20).map((file) => `- ${file}`),
+          "Fallback verification still runs any discovered or configured baseline commands.",
+          "Run projectgate inspect --verbose for mapping diagnostics.",
+        ].join("\n"),
+      );
+    } else if (unresolved.length > 0) {
+      limitations.push(`Unresolved files (${unresolved.length}): ${unresolved.slice(0, 12).join(", ")}. Baseline checks still run. Use projectgate inspect --verbose for the classification of each file.`);
     }
     if (change.files.length === 0) {
       const packet = assemblePacket({
@@ -105,6 +116,17 @@ async function runPipeline(options: RunOptions & { kind: "audit" | "verify" }): 
       .all()
       .filter((verifier) => verifier.supports(planning))
       .flatMap((verifier) => verifier.plan(planning));
+    const runtimePlanned = planned.some((check) => check.verifierId === "playwright" || check.verifierId === "visual" || check.verifierId === "accessibility" || check.verifierId === "api");
+    if (!runtimePlanned && (contract.routes.length > 0 || contract.ui_states.length > 0 || contract.acceptance.some((item) => item.evidence === "RUNTIME"))) {
+      if (!config.environment?.start && !config.environment?.baseUrl) {
+        limitations.push("Browser and API runtime checks were not all available. Reason: no application start command or base URL is configured. Set local.start and local.ready_url or local.base_url in .projectgate/environments.yml, then run projectgate verify.");
+      } else if (contract.routes.length === 0 && contract.ui_states.length === 0 && !contract.acceptance.some((item) => item.verification)) {
+        limitations.push("No browser route checks were planned because the contract does not name routes or UI states. Baseline commands still run.");
+      }
+    }
+    if (planned.length === 0) {
+      limitations.push("No checks were planned. Project Gate did not find configured commands, architecture rules, contract routes, or UI states. Run projectgate inspect and add scripts to package.json or commands to .projectgate/verification.yml.");
+    }
     const ids = new Set<string>();
     for (const check of planned) {
       if (ids.has(check.id)) throw new ProjectGateError(`Duplicate check id ${check.id}.`, "INTERNAL");
@@ -231,7 +253,7 @@ export async function planVerification(options: RunOptions): Promise<{
   }[];
 }> {
   const config = loadProject(options.root);
-  const contract = loadContract(options.contractPath ?? path.join(options.root, product.configDir, "contract.yml"));
+  const contract = requireActiveContract(options.root, options.contractPath);
   const change = await collectChange(options.root, options.against);
   const registry = options.registry ?? createDefaultRegistry();
   const planning = { root: options.root, contract, config, changedFiles: change.files.map((file) => file.path) };

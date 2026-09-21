@@ -73,6 +73,7 @@ export function analyzeImpact(input: {
       });
     }
     for (const route of routesInFile(file.path, text)) addRoute(surfaces, route, file.path);
+    addFileSurface(surfaces, file.path);
   }
 
   if (input.contract) {
@@ -99,7 +100,10 @@ export function analyzeImpact(input: {
     }
   }
 
-  return { changedFiles, surfaces: [...surfaces.values()], edges };
+  const unresolvedFiles = changedFiles
+    .filter((file) => file.status !== "deleted" && isApplicationSource(file.path) && file.role === "unknown")
+    .map((file) => file.path);
+  return { changedFiles, surfaces: [...surfaces.values()], edges, unresolvedFiles };
 }
 
 export async function inferImpactEdges(input: {
@@ -133,6 +137,19 @@ export async function inferImpactEdges(input: {
   } catch {
     return { edges: [], warning: "LLM impact inference returned data that did not match the edge schema. It was ignored." };
   }
+}
+
+function addFileSurface(surfaces: Map<string, ImpactSummary["surfaces"][number]>, file: string): void {
+  const classification = classifyFile(file);
+  if (classification.role !== "ui" && classification.role !== "api-server" && classification.role !== "api-client" && classification.role !== "migration") return;
+  const kind = classification.role === "ui" ? "component" : classification.role === "migration" ? "migration" : "backend";
+  addSurface(surfaces, {
+    id: `${kind}:${file}`,
+    relationship: "changed-file",
+    source: classification.source,
+    confidence: classification.confidence,
+    files: [file],
+  });
 }
 
 function addRoute(surfaces: Map<string, ImpactSummary["surfaces"][number]>, route: RouteHit, file: string): void {
@@ -174,6 +191,10 @@ function unique(values: string[]): string[] {
 
 function isTextSource(file: string): boolean {
   return /\.(ts|tsx|js|jsx|mjs|cjs|php|vue|css|html)$/i.test(file);
+}
+
+function isApplicationSource(file: string): boolean {
+  return /\.(ts|tsx|js|jsx|mjs|cjs|php|vue)$/i.test(file);
 }
 
 function isTestPath(file: string): boolean {

@@ -21,7 +21,9 @@ export class ShellVerifier implements Verifier {
         id: `shell:${command.id}`,
         verifierId: this.id,
         title: command.title,
-        why: `Run the configured command ${command.command} to collect executable evidence.`,
+        why: command.criterionId
+          ? `Run ${command.command} as the check linked to ${command.criterionId}.`
+          : `Baseline command ${command.command} discovered or configured for this repository.`,
         group: command.group,
         expectedEvidence: command.evidence,
         execution: "deterministic",

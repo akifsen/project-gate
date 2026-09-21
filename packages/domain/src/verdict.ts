@@ -22,14 +22,14 @@ export function evaluateCriterion(input: {
   id: string;
   required: boolean;
   requiredEvidence: EvidenceClass;
-  checks: readonly { status: CheckStatus; evidenceClass: EvidenceClass | null }[];
+  checks: readonly { status: CheckStatus; evidenceClass: EvidenceClass | null; error?: string }[];
 }): CriterionEvaluation {
   if (input.checks.length === 0) {
     return {
       id: input.id,
       required: input.required,
       state: "UNKNOWN",
-      reason: "No verification check was planned for this criterion.",
+      reason: missingCheckReason(input.requiredEvidence),
     };
   }
   if (input.checks.some((check) => check.status === "FAILED")) {
@@ -41,11 +41,14 @@ export function evaluateCriterion(input: {
     };
   }
   if (input.checks.some((check) => check.status === "ERROR" || check.status === "UNKNOWN")) {
+    const detail = input.checks.find((check) => check.error)?.error;
     return {
       id: input.id,
       required: input.required,
       state: "UNKNOWN",
-      reason: "A linked verification check did not produce a result.",
+      reason: detail
+        ? `A linked verification check did not produce a result. ${detail}`
+        : `A linked verification check did not produce ${input.requiredEvidence} evidence. Next: inspect the check error in the report and supply the missing runtime or command configuration.`,
     };
   }
   const satisfied = input.checks.some(
@@ -59,7 +62,7 @@ export function evaluateCriterion(input: {
       id: input.id,
       required: input.required,
       state: "UNKNOWN",
-      reason: `Passed checks did not produce ${input.requiredEvidence} evidence.`,
+      reason: `Passed checks did not produce ${input.requiredEvidence} evidence. Missing evidence: ${input.requiredEvidence}. Next: add a check that produces ${input.requiredEvidence}, or change this criterion's evidence class if a weaker check is actually sufficient.`,
     };
   }
   return {
@@ -68,6 +71,19 @@ export function evaluateCriterion(input: {
     state: "VERIFIED",
     reason: "Linked checks passed with sufficient evidence.",
   };
+}
+
+function missingCheckReason(evidence: EvidenceClass): string {
+  if (evidence === "RUNTIME" || evidence === "OBSERVED") {
+    return `No verification check was planned for this criterion. Missing evidence: ${evidence}. Next: add a route, UI state, or API verification block to the contract, and set local.start plus ready_url in .projectgate/environments.yml.`;
+  }
+  if (evidence === "EXECUTABLE") {
+    return "No verification check was planned for this criterion. Missing evidence: EXECUTABLE. Next: add a command under .projectgate/verification.yml commands and set its criterion to this id. projectgate init records build, test, lint, and typecheck commands it can see.";
+  }
+  if (evidence === "STATIC") {
+    return "No verification check was planned for this criterion. Missing evidence: STATIC. Next: add an architecture rule that applies to the changed files, or link a static command to this criterion.";
+  }
+  return `No verification check was planned for this criterion. Missing evidence: ${evidence}. Next: link a verifier check that produces ${evidence}.`;
 }
 
 export function computeVerdict(input: {

@@ -21,10 +21,15 @@ const tools: { name: (typeof toolNames)[number]; description: string; inputSchem
   },
   {
     name: "projectgate.create_contract",
-    description: "Read the active contract, or write contract.proposed.yml from a description when an LLM provider is configured. Does not replace contract.yml.",
+    description: "Create or read the active change contract. task, fromFile, and fromDiff write contract.yml. description writes an inactive proposal when a model is configured.",
     inputSchema: {
       cwd,
-      description: z.string().optional().describe("Requirement text. When set, a proposed contract is written and is not activated."),
+      description: z.string().optional().describe("Requirement text for an inactive proposal. Requires an LLM provider."),
+      task: z.string().optional().describe("Create the active contract from this description."),
+      fromFile: z.string().optional().describe("Create the active contract from a requirement file."),
+      fromDiff: z.boolean().optional().describe("Infer an active contract from the git diff. Criteria are marked INFERRED."),
+      replace: z.boolean().optional().describe("Overwrite an existing active contract."),
+      against: z.string().optional().describe("Git ref used with fromDiff."),
     },
   },
   {

@@ -31,7 +31,7 @@ packages/cli  packages/mcp  integrations/agents
 
 ## Local storage
 
-SQLite (`node:sqlite`) stores one `runs` table and a latest-run pointer at `.projectgate/runtime/projectgate.db`. Screenshots, logs, and the packet files live under `.projectgate/runtime/runs/<run-id>/`. That directory is gitignored.
+A JSON index at `.projectgate/runtime/index.json` records run ids. Screenshots, logs, and the packet files live under `.projectgate/runtime/runs/<run-id>/`. That directory is gitignored. See `docs/ADR/0007-json-run-index.md`.
 
 ## LLM boundary
 

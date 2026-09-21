@@ -1,5 +1,5 @@
 import { EVIDENCE_CLASSES, type EvidenceClass } from "@projectgate/domain";
-import { ProjectGateError, canonicalJson, sha256Text } from "@projectgate/shared";
+import { EXIT_CONFIG, ProjectGateError, canonicalJson, sha256Text } from "@projectgate/shared";
 import fs from "node:fs";
 import { parse } from "yaml";
 import { z } from "zod";
@@ -90,6 +90,7 @@ export const contractSchema = z
             description: z.string().min(1),
             required: z.boolean().default(true),
             evidence: evidenceSchema.default("RUNTIME"),
+            origin: z.enum(["USER_SUPPLIED", "FILE_SUPPLIED", "INFERRED"]).default("USER_SUPPLIED"),
             verification: z.union([apiVerificationSchema, browserVerificationSchema]).optional(),
           })
           .strict(),
@@ -170,7 +171,7 @@ export interface ChangeContract extends ContractFile {
 
 export function loadContract(filePath: string): ChangeContract {
   if (!fs.existsSync(filePath)) {
-    throw new ProjectGateError(`Change contract not found: ${filePath}`, "CONTRACT", 2);
+    throw new ProjectGateError(missingContractMessage(filePath), "CONTRACT", EXIT_CONFIG);
   }
   let raw: unknown;
   try {
@@ -195,6 +196,58 @@ export function loadContract(filePath: string): ChangeContract {
 export function contractHash(contract: ContractFile): string {
   return sha256Text(canonicalJson(contract));
 }
+
+export function missingContractMessage(filePath: string): string {
+  return [
+    "NO ACTIVE CHANGE CONTRACT",
+    "",
+    "Project Gate can see the repository, but it does not yet know what the change is supposed to accomplish.",
+    `Expected an active contract at ${filePath}.`,
+    "",
+    "Create one:",
+    "",
+    "projectgate contract --task \"Describe the change\"",
+    "",
+    "projectgate contract --from-file TASK.md",
+    "",
+    "projectgate contract --from-diff",
+  ].join("\n");
+}
+
+export function placeholderProblems(contract: ContractFile): string[] {
+  const problems: string[] = [];
+  if (PLACEHOLDER_TITLES.some((pattern) => pattern.test(contract.change.title))) problems.push(`Title "${contract.change.title}" is placeholder text.`);
+  if (PLACEHOLDER_SUMMARIES.some((pattern) => pattern.test(contract.intent.summary))) problems.push("The intent summary is still the template text.");
+  for (const criterion of contract.acceptance) {
+    if (PLACEHOLDER_CRITERIA.some((pattern) => pattern.test(criterion.description.trim()))) {
+      problems.push(`${criterion.id} description is placeholder text: ${criterion.description.trim()}`);
+    }
+  }
+  return problems;
+}
+
+export function invalidContractMessage(problems: readonly string[]): string {
+  return [
+    "INVALID CHANGE CONTRACT",
+    "",
+    "The active contract appears to contain example or placeholder content.",
+    ...problems.map((problem) => `- ${problem}`),
+    "",
+    "Create a real contract:",
+    "",
+    "projectgate contract --task \"Describe the change\"",
+  ].join("\n");
+}
+
+const PLACEHOLDER_TITLES = [/^example change$/i, /^example feature$/i, /^sample change$/i, /^sample$/i];
+const PLACEHOLDER_SUMMARIES = [/^describe what the change is supposed to accomplish\.?$/i];
+const PLACEHOLDER_CRITERIA = [
+  /^replace this with a real acceptance criterion\.?$/i,
+  /^replace me\.?$/i,
+  /^todo$/i,
+  /^sample$/i,
+  /^example acceptance criterion\.?$/i,
+];
 
 function assertUnique(ids: string[], label: string): void {
   const seen = new Set<string>();

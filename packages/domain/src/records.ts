@@ -95,6 +95,7 @@ export interface ImpactSummary {
     source: string;
     confidence: Confidence;
   }[];
+  unresolvedFiles?: string[];
 }
 
 export interface UiStateResult {

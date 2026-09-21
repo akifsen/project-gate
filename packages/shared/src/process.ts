@@ -29,11 +29,20 @@ export function runProcess(options: {
       settled = true;
       resolve(result);
     };
-    const child = spawn(options.command, [...options.args], {
-      cwd: options.cwd,
-      env: { ...process.env, ...options.env },
-      windowsHide: true,
-    });
+    let child;
+    try {
+      child = spawnCommand(options);
+    } catch (error) {
+      finish({
+        exitCode: null,
+        stdout,
+        stderr,
+        durationMs: Date.now() - started,
+        timedOut: false,
+        spawnError: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill();
@@ -66,6 +75,27 @@ export function runProcess(options: {
       });
     });
   });
+}
+
+const WINDOWS_SHIMS = new Set(["npm", "npx", "pnpm", "yarn", "corepack", "composer"]);
+
+function spawnCommand(options: { command: string; args: readonly string[]; cwd: string; env?: NodeJS.ProcessEnv }) {
+  const stdio = {
+    cwd: options.cwd,
+    env: { ...process.env, ...options.env },
+    windowsHide: true,
+  };
+  if (process.platform === "win32" && WINDOWS_SHIMS.has(options.command)) {
+    const line = [options.command, ...options.args].map(quoteCmd).join(" ");
+    return spawn(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", line], stdio);
+  }
+  return spawn(options.command, [...options.args], stdio);
+}
+
+function quoteCmd(value: string): string {
+  if (value.length === 0) return "\"\"";
+  if (!/[\s"&|<>^%]/.test(value)) return value;
+  return `"${value.replaceAll("\"", "\"\"")}"`;
 }
 
 function append(current: string, chunk: Buffer): string {
