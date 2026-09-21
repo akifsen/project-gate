@@ -1,0 +1,19 @@
+schema_version: 1
+rules:
+  - id: verifiers-do-not-import-adapters
+    description: Verifier packages must not import the CLI or MCP server.
+    path_globs:
+      - verifiers/**/*.ts
+    severity: MAJOR
+    forbidden_imports:
+      - "@projectgate/cli"
+      - "@projectgate/mcp"
+  - id: domain-does-not-import-adapters
+    description: The domain package must not import delivery adapters.
+    path_globs:
+      - packages/domain/**/*.ts
+    severity: MAJOR
+    forbidden_imports:
+      - "@projectgate/cli"
+      - "@projectgate/mcp"
+      - playwright

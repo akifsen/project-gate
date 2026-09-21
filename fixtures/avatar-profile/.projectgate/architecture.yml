@@ -1,0 +1,12 @@
+schema_version: 1
+layers: []
+forbidden_edges: []
+rules:
+  - id: no-eval
+    description: Direct eval is forbidden.
+    path_globs:
+      - "**/*.js"
+      - "**/*.mjs"
+    severity: MAJOR
+    forbidden_calls:
+      - eval

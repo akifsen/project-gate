@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <h1>Profile</h1>
+      <p data-testid="loading" hidden>Loading avatar…</p>
+      <p data-testid="empty-state">No avatar yet.</p>
+      <img data-testid="avatar-image" alt="Your avatar" hidden />
+      <p data-testid="placeholder" hidden>Placeholder avatar</p>
+      <form>
+        <input data-testid="avatar-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload avatar" />
+        <button data-testid="save-avatar" type="submit">Save avatar</button>
+      </form>
+      <p data-testid="uploading" hidden>Uploading…</p>
+      <p data-testid="success" hidden>Avatar saved.</p>
+      <p data-testid="validation-error" hidden>That file is not allowed.</p>
+      <p data-testid="server-error" hidden>Could not save your avatar. Try again.</p>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

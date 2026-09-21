@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.projectgate/runtime/
+coverage/
+fixtures/avatar-profile/data/
+*.log
+.DS_Store

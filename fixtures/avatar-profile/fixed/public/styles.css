@@ -1,0 +1,5 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.4 system-ui, sans-serif; color: #111; background: #fff; }
+.page { padding: 24px; max-width: 720px; }
+button { min-width: 44px; min-height: 44px; }
+img { max-width: 100%; height: auto; }

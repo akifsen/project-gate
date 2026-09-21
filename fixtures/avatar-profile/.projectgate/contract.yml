@@ -1,0 +1,168 @@
+schema_version: 1
+change:
+  id: USER-142
+  title: User Avatar
+intent:
+  summary: A user can upload, replace, and remove their own avatar.
+  users_can:
+    - upload_avatar
+    - replace_avatar
+    - remove_avatar
+acceptance:
+  - id: AC-001
+    description: JPEG, PNG and WebP files are accepted, and other types are rejected.
+    required: true
+    evidence: RUNTIME
+  - id: AC-002
+    description: Files larger than 5 MB are rejected.
+    required: true
+    evidence: RUNTIME
+  - id: AC-003
+    description: Uploaded avatar remains visible after a hard refresh.
+    required: true
+    evidence: RUNTIME
+    verification:
+      verifier: playwright
+      title: Refresh
+      group: Refresh
+      viewport:
+        width: 1440
+        height: 900
+      steps:
+        - action: goto
+          value: /profile
+        - action: upload
+          selector: "[data-testid=avatar-input]"
+          filename: avatar.png
+          content_type: image/png
+        - action: click
+          selector: "[data-testid=save-avatar]"
+        - action: assert_visible
+          selector: "[data-testid=success]"
+        - action: reload
+        - action: assert_visible
+          selector: "[data-testid=avatar-image]"
+        - action: assert_image_loaded
+          selector: "[data-testid=avatar-image]"
+      dependencies:
+        - public/main.js
+        - public/index.html
+        - public/styles.css
+        - server.mjs
+        - store.mjs
+      suspects:
+        - public/main.js
+        - store.mjs
+  - id: AC-004
+    description: Users cannot modify another user's avatar.
+    required: true
+    evidence: RUNTIME
+    verification:
+      verifier: api
+      title: Authorization
+      group: API authorization
+      request:
+        method: POST
+        path: /api/users/2/avatar
+        headers:
+          x-user-id: "1"
+        multipart:
+          field: avatar
+          filename: avatar.png
+          content_type: image/png
+          bytes: 64
+      expect:
+        status: 403
+      dependencies:
+        - server.mjs
+        - auth.mjs
+        - mime.mjs
+        - store.mjs
+      suspects:
+        - auth.mjs
+        - server.mjs
+ui_states:
+  - id: empty
+    description: Empty
+    route: /profile
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile }
+      - { action: assert_visible, selector: "[data-testid=empty-state]" }
+    dependencies: [public/index.html, public/main.js]
+  - id: loading
+    description: Loading
+    route: /profile?state=loading
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile?state=loading }
+      - { action: assert_visible, selector: "[data-testid=loading]" }
+    dependencies: [public/index.html, public/main.js]
+  - id: success
+    description: Success
+    route: /profile
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile }
+      - { action: upload, selector: "[data-testid=avatar-input]", filename: avatar.png, content_type: image/png }
+      - { action: click, selector: "[data-testid=save-avatar]" }
+      - { action: assert_visible, selector: "[data-testid=success]" }
+    dependencies: [public/main.js, server.mjs, mime.mjs]
+  - id: validation_error
+    description: Validation error
+    route: /profile
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile }
+      - { action: upload, selector: "[data-testid=avatar-input]", filename: notes.txt, content_type: text/plain }
+      - { action: click, selector: "[data-testid=save-avatar]" }
+      - { action: assert_visible, selector: "[data-testid=validation-error]" }
+    dependencies: [public/main.js, mime.mjs]
+  - id: server_error
+    description: Server error
+    route: /profile?state=server-error
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile?state=server-error }
+      - { action: assert_visible, selector: "[data-testid=server-error]" }
+    dependencies: [public/main.js, public/index.html, server.mjs]
+  - id: uploading
+    description: Uploading
+    route: /profile
+    viewport: { width: 1440, height: 900 }
+    steps:
+      - { action: goto, value: /profile }
+      - { action: assert_present, selector: "[data-testid=uploading]" }
+    dependencies: [public/index.html]
+responsive:
+  - { width: 390, height: 844 }
+  - { width: 768, height: 1024 }
+  - { width: 1440, height: 900 }
+routes:
+  - /profile
+invariants:
+  - id: INV-001
+    description: Existing authentication behavior for unrelated resources must not change.
+    required: false
+    evidence: STATIC
+fields:
+  - name: avatar
+    type: file
+    max_bytes: 5242880
+    accept: [image/png, image/jpeg, image/webp]
+    covers:
+      accept: AC-001
+      reject_oversize: AC-002
+      reject_type: AC-001
+      reject_empty: AC-001
+    request:
+      method: POST
+      path: /api/users/1/avatar
+      headers:
+        x-user-id: "1"
+      multipart_field: avatar
+    dependencies:
+      - server.mjs
+      - mime.mjs
+      - auth.mjs
+      - store.mjs

@@ -1,0 +1,20 @@
+{
+  "name": "@projectgate/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "@projectgate/agent-adapter": "0.1.0",
+    "@projectgate/core": "0.1.0",
+    "@projectgate/domain": "0.1.0",
+    "@projectgate/shared": "0.1.0"
+  }
+}

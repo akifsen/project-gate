@@ -1,0 +1,18 @@
+{
+  "name": "@projectgate/policy-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "zod": "^3.25.76",
+    "@projectgate/domain": "0.1.0",
+    "@projectgate/shared": "0.1.0"
+  }
+}

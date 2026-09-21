@@ -1,0 +1,8 @@
+schema_version: 1
+local:
+  start:
+    command: node
+    args: ["server.mjs"]
+  port_env: PORT
+  ready_url: http://127.0.0.1:${PORT}/health
+  base_url: http://127.0.0.1:${PORT}

@@ -1,0 +1,43 @@
+schema_version: 1
+layers:
+  - name: domain
+    paths:
+      - packages/domain/**
+    namespaces:
+      - "@projectgate/domain"
+  - name: cli
+    paths:
+      - packages/cli/**
+    namespaces:
+      - "@projectgate/cli"
+  - name: mcp
+    paths:
+      - packages/mcp/**
+    namespaces:
+      - "@projectgate/mcp"
+  - name: verifier
+    paths:
+      - verifiers/**
+    namespaces: []
+forbidden_edges:
+  - id: domain-must-not-depend-on-cli
+    from: domain
+    to: cli
+    severity: MAJOR
+    description: The domain must not depend on the CLI.
+  - id: domain-must-not-depend-on-mcp
+    from: domain
+    to: mcp
+    severity: MAJOR
+    description: The domain must not depend on the MCP adapter.
+  - id: verifier-must-not-depend-on-cli
+    from: verifier
+    to: cli
+    severity: MAJOR
+    description: Verifiers must not depend on the CLI.
+  - id: verifier-must-not-depend-on-mcp
+    from: verifier
+    to: mcp
+    severity: MAJOR
+    description: Verifiers must not depend on the MCP adapter.
+rules: []

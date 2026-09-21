@@ -1,0 +1,15 @@
+schema_version: 1
+timeouts:
+  command_ms: 120000
+  http_ms: 30000
+  browser_ms: 8000
+commands:
+  - id: mime-unit
+    title: Mime unit tests
+    command: node
+    args: ["--test", "tests/mime.test.mjs"]
+    invalidates_on:
+      - mime.mjs
+      - tests/mime.test.mjs
+    evidence: EXECUTABLE
+    group: Mime unit tests

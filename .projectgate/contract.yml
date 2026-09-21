@@ -1,0 +1,22 @@
+schema_version: 1
+change:
+  id: GATE-SELF
+  title: Project Gate workspace
+intent:
+  summary: The workspace typechecks, and verifier or domain code does not depend on the CLI or MCP adapters.
+  users_can:
+    - audit_a_change
+acceptance:
+  - id: AC-001
+    description: The TypeScript workspace typechecks.
+    required: true
+    evidence: EXECUTABLE
+ui_states: []
+responsive: []
+routes: []
+invariants:
+  - id: INV-001
+    description: Verifier and domain packages must not import the CLI or MCP adapters.
+    required: false
+    evidence: STATIC
+fields: []

@@ -1,0 +1,19 @@
+schema_version: 1
+required_states:
+  - loading
+  - empty
+  - error
+  - success
+responsive:
+  widths: [390, 768, 1440]
+  heights: [844, 1024, 900]
+accessibility:
+  enabled: true
+visual:
+  min_target_px: 24
+  invalidates_on:
+    - "**/*.css"
+    - "**/*.html"
+    - "**/*.tsx"
+    - "**/*.jsx"
+    - "**/*.vue"

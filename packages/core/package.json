@@ -1,0 +1,33 @@
+{
+  "name": "@projectgate/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@projectgate/accessibility-verifier": "0.1.0",
+    "@projectgate/agent-adapter": "0.1.0",
+    "@projectgate/api-verifier": "0.1.0",
+    "@projectgate/architecture-verifier": "0.1.0",
+    "@projectgate/browser": "0.1.0",
+    "@projectgate/config": "0.1.0",
+    "@projectgate/contracts": "0.1.0",
+    "@projectgate/domain": "0.1.0",
+    "@projectgate/evidence": "0.1.0",
+    "@projectgate/impact-engine": "0.1.0",
+    "@projectgate/model": "0.1.0",
+    "@projectgate/playwright-verifier": "0.1.0",
+    "@projectgate/policy-engine": "0.1.0",
+    "@projectgate/report": "0.1.0",
+    "@projectgate/shared": "0.1.0",
+    "@projectgate/shell-verifier": "0.1.0",
+    "@projectgate/verifier-sdk": "0.1.0",
+    "@projectgate/visual-verifier": "0.1.0"
+  }
+}

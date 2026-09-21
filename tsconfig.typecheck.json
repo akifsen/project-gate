@@ -1,0 +1,85 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "baseUrl": ".",
+    "paths": {
+      "@projectgate/shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@projectgate/domain": [
+        "packages/domain/src/index.ts"
+      ],
+      "@projectgate/policy-engine": [
+        "packages/policy-engine/src/index.ts"
+      ],
+      "@projectgate/config": [
+        "packages/config/src/index.ts"
+      ],
+      "@projectgate/contracts": [
+        "packages/contracts/src/index.ts"
+      ],
+      "@projectgate/model": [
+        "packages/model/src/index.ts"
+      ],
+      "@projectgate/impact-engine": [
+        "packages/impact-engine/src/index.ts"
+      ],
+      "@projectgate/evidence": [
+        "packages/evidence/src/index.ts"
+      ],
+      "@projectgate/verifier-sdk": [
+        "packages/verifier-sdk/src/index.ts"
+      ],
+      "@projectgate/report": [
+        "packages/report/src/index.ts"
+      ],
+      "@projectgate/browser": [
+        "verifiers/browser/src/index.ts"
+      ],
+      "@projectgate/shell-verifier": [
+        "verifiers/shell/src/index.ts"
+      ],
+      "@projectgate/api-verifier": [
+        "verifiers/api/src/index.ts"
+      ],
+      "@projectgate/architecture-verifier": [
+        "verifiers/architecture/src/index.ts"
+      ],
+      "@projectgate/playwright-verifier": [
+        "verifiers/playwright/src/index.ts"
+      ],
+      "@projectgate/accessibility-verifier": [
+        "verifiers/accessibility/src/index.ts"
+      ],
+      "@projectgate/visual-verifier": [
+        "verifiers/visual/src/index.ts"
+      ],
+      "@projectgate/agent-adapter": [
+        "integrations/agents/src/index.ts"
+      ],
+      "@projectgate/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@projectgate/cli": [
+        "packages/cli/src/index.ts"
+      ],
+      "@projectgate/mcp": [
+        "packages/mcp/src/index.ts"
+      ]
+    },
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "verifiers/*/src/**/*.ts",
+    "integrations/*/src/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../../verifiers/accessibility"
+    },
+    {
+      "path": "../../integrations/agents"
+    },
+    {
+      "path": "../../verifiers/api"
+    },
+    {
+      "path": "../../verifiers/architecture"
+    },
+    {
+      "path": "../../verifiers/browser"
+    },
+    {
+      "path": "../config"
+    },
+    {
+      "path": "../contracts"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../evidence"
+    },
+    {
+      "path": "../impact-engine"
+    },
+    {
+      "path": "../model"
+    },
+    {
+      "path": "../../verifiers/playwright"
+    },
+    {
+      "path": "../policy-engine"
+    },
+    {
+      "path": "../report"
+    },
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../../verifiers/shell"
+    },
+    {
+      "path": "../verifier-sdk"
+    },
+    {
+      "path": "../../verifiers/visual"
+    }
+  ]
+}
