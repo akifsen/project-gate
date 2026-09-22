@@ -9,8 +9,11 @@ export default tseslint.config(
     files: ["**/*.{js,mjs,cjs}"],
     languageOptions: {
       globals: {
+        Buffer: "readonly",
+        clearTimeout: "readonly",
         console: "readonly",
         process: "readonly",
+        setTimeout: "readonly",
       },
     },
   },

@@ -19,6 +19,9 @@ describe("cli", () => {
     expect(await runCli(["--help"], help)).toBe(0);
     expect(help.out).toContain("audit");
     expect(help.out).toContain("doctor");
+    const version = capture();
+    expect(await runCli(["--version"], version)).toBe(0);
+    expect(version.out.trim()).toBe("0.1.0");
     expect(fs.existsSync(path.join(root, ".projectgate", "contract.yml"))).toBe(false);
     expect(fs.existsSync(path.join(root, ".projectgate", "contract.template.yml"))).toBe(true);
     expect(io.out).toContain("projectgate contract --task");

@@ -2,13 +2,9 @@
 
 `packages/mcp` exposes the core operations as structured tools. The handlers in `handlers.ts` call `inspectProject`, `planVerification`, `audit`, `verify`, and `latestPacket`. They do not reimplement verdict or execution.
 
-Start the stdio server after a build:
+After `npm install -g @akifsen/project-gate`, the stdio server is the `projectgate-mcp` command. It prints protocol messages on stdout, not a human help screen.
 
-```bash
-node packages/mcp/dist/server.js
-```
-
-The workspace bin name is `projectgate-mcp`.
+From a source checkout, build first and run `node packages/mcp/dist/server.js`. The workspace package also exposes the `projectgate-mcp` bin.
 
 ## Tools
 

@@ -1,0 +1,58 @@
+{
+  "name": "@akifsen/project-gate",
+  "version": "0.1.0",
+  "description": "Independent evidence-based release gate for AI-built software.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Akif ŞEN",
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "verification",
+    "release-gate",
+    "quality-gate",
+    "mcp",
+    "playwright",
+    "software-testing",
+    "developer-tools",
+    "ci"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akifsen/project-gate.git"
+  },
+  "homepage": "https://github.com/akifsen/project-gate#readme",
+  "bugs": {
+    "url": "https://github.com/akifsen/project-gate/issues"
+  },
+  "bin": {
+    "projectgate": "./bin/projectgate.js",
+    "projectgate-mcp": "./bin/projectgate-mcp.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "commander": "^13.1.0",
+    "php-parser": "^3.2.5",
+    "playwright": "^1.55.0",
+    "typescript": "^5.9.2",
+    "yaml": "^2.8.1",
+    "zod": "^3.25.76"
+  },
+  "scripts": {
+    "prepack": "node ../scripts/build-release.mjs"
+  }
+}

@@ -1,10 +1,8 @@
 # Project Gate
 
-Project Gate decides whether a software change is actually done. A coding agent saying “done” is not evidence. The auditor does not certify the implementation, and a criterion passes only when the required evidence exists.
+Project Gate is an independent evidence-based release gate for AI-built software.
 
-Install dependencies with `npm install`. Do not copy a `node_modules` folder between machines. Native addons and Playwright browsers are platform-specific.
-
-The product name and command live in `packages/shared/src/product.ts`.
+It connects a Change Contract to impact, verification, evidence, and a verdict. A coding agent saying “done” is not evidence. The author does not certify the implementation. A criterion passes only when the required evidence exists.
 
 ## Requirements
 
@@ -12,43 +10,18 @@ The product name and command live in `packages/shared/src/product.ts`.
 - Git
 - Windows PowerShell and other shells are both supported
 
-Playwright’s Chromium build is required only for browser, visual, and accessibility checks:
+## Quick start
+
+Install the published package. `npm link` is only for people working on this repository.
 
 ```powershell
-npx playwright install chromium
-```
-
-Skip that command when you only want baseline build, test, lint, and typecheck checks.
-
-## Installation
-
-From a clone of this repository, in PowerShell:
-
-```powershell
-npm install
-npm run build
-npm link
+npm install -g @akifsen/project-gate
 
 projectgate --help
+projectgate --version
 ```
 
-`npm install` does not put this package’s own `projectgate` command on your PATH. `npm link` does. After the link, `projectgate` works from any repository.
-
-Without a global link, from this repository:
-
-```powershell
-npm run projectgate -- --help
-```
-
-That script runs `node packages/cli/dist/main.js`, which exists only after `npm run build`.
-
-Confirm the setup:
-
-```powershell
-projectgate doctor
-```
-
-## First use
+`--version` prints the installed package version.
 
 In the repository you want to audit:
 
@@ -59,14 +32,12 @@ projectgate init
 projectgate doctor
 projectgate inspect
 
-projectgate contract --task "Add profile avatar upload with 5 MB validation."
+projectgate contract --task "Describe the change"
 
 projectgate audit
 ```
 
-`init` discovers the stack and writes long-lived configuration under `.projectgate/`. It does not create an active change contract, and you do not copy a template into `contract.yml`.
-
-`contract --task` writes `.projectgate/contract.yml`. The supplied text becomes criterion `AC-001` with evidence class `EXECUTABLE`, and Project Gate links the discovered test command to that criterion when one exists. That proves the test ran. It does not prove browser behavior. Edit the contract and set `evidence: RUNTIME`, plus routes or UI states, when the change has to be observed in the running app. Set `local.start` and `local.ready_url` in `.projectgate/environments.yml` before runtime checks can start the app. A proposed `dev` or `start` script is reported by `inspect` and is not launched automatically.
+`init` discovers the stack and writes long-lived configuration under `.projectgate/`. It does not create an active change contract. `contract --task` writes `.projectgate/contract.yml`. You do not copy a template into place.
 
 If the audit is blocked:
 
@@ -91,30 +62,59 @@ projectgate contract --from-diff
 projectgate contract
 ```
 
-`--from-diff` marks criteria `INFERRED`. Review them before treating them as requirements. `projectgate contract` with no arguments summarizes the active contract, or prints these commands when there is none.
+`--from-diff` marks criteria `INFERRED`. Review them before treating them as requirements. `projectgate contract` with no arguments summarizes the active contract, or prints the create commands when there is none.
 
 `projectgate plan` prints the verification plan without running it. `projectgate audit --verbose` and `projectgate inspect --verbose` add classification and check rationale.
 
-## What an audit looks like
+`contract --task` creates criterion `AC-001` with evidence class `EXECUTABLE` and links the discovered test command when one exists. That proves the test ran. It does not prove browser behavior. Set `evidence: RUNTIME`, plus routes or UI states, when the change has to be observed in the running app. Set `local.start` and `local.ready_url` in `.projectgate/environments.yml` before runtime checks can start the app. A proposed `dev` or `start` script is reported by `inspect` and is not launched automatically.
 
-```text
-Task:
-Add avatar upload.
+## npx
 
-1. projectgate init
-2. projectgate contract --task "Users can upload JPEG, PNG and WebP avatars up to 5 MB."
-3. projectgate audit
-```
-
-A blocked result names the failed checks and the reason any criterion is still unknown. Give the fix packet to the implementation agent:
+For a one-off check:
 
 ```powershell
-projectgate report --format fix
+npx -y @akifsen/project-gate --help
+npx -y @akifsen/project-gate --version
+npx -y @akifsen/project-gate doctor
 ```
 
-Then `projectgate verify`. A pass means every required criterion has sufficient evidence and no blocking finding is open. Unknown is not turned into a pass.
+Install the package globally or in the target project when you will run `init`, `audit`, and `verify` more than once. Those commands store configuration and evidence in that project.
 
-The avatar fixture in `fixtures/avatar-profile` is a full runtime example: desktop works, mobile overflows, authorization is wrong, and refresh loses the avatar. `npm run demo` copies it, audits the broken tree, applies `fixed/`, and verifies. That demo expects a built CLI.
+## Playwright
+
+Browser, visual, and accessibility checks need Chromium. Installing the npm package does not download browser binaries.
+
+`projectgate doctor` reports whether the Playwright library is installed and whether Chromium is present. When Chromium is missing:
+
+```powershell
+npx playwright install chromium
+```
+
+Skip that command when you only want baseline build, test, lint, and typecheck checks.
+
+## MCP
+
+The package provides `projectgate-mcp`, a stdio server. It uses the same application services as the CLI and does not print a human help screen.
+
+```json
+{
+  "mcpServers": {
+    "projectgate": {
+      "command": "projectgate-mcp"
+    }
+  }
+}
+```
+
+Tool names and arguments are in `docs/MCP.md`. This repository does not claim a specific editor integration beyond that stdio command.
+
+## Versions
+
+`0.1.0` is the first public release. Version numbers are changed by hand in `release/package.json` before a release. There is no automated publisher.
+
+- **Patch:** bug fixes that do not change the CLI, verdicts, or contract schema
+- **Minor:** backward-compatible commands, verifiers, or contract fields
+- **Major:** breaking changes to the CLI, exit codes, verdicts, or contract schema
 
 ## Exit codes
 
@@ -128,25 +128,45 @@ The avatar fixture in `fixtures/avatar-profile` is a full runtime example: deskt
 | 5 | Configuration error, including no active contract or a placeholder contract |
 | 64 | Usage error |
 
-## Checks this repository runs
+## Contributing / local development
+
+The source tree is an npm workspace. Internal packages stay private under `@projectgate/*`. The public package is built into `release/` as `@akifsen/project-gate`, with workspace code bundled in. Do not copy `node_modules` between machines.
+
+```powershell
+git clone https://github.com/akifsen/project-gate.git
+cd project-gate
+
+npm install
+npm run build
+npm link
+
+projectgate --help
+```
+
+`npm link` is for this checkout only. Without a global link:
+
+```powershell
+npm run projectgate -- --help
+```
+
+That script runs `node packages/cli/dist/main.js` after `npm run build`.
 
 ```powershell
 npm run check
+npm run release:check
 ```
 
-That typechecks, lints, tests, and builds. `npm test` includes the avatar end-to-end test and the lifecycle test.
+`npm run check` typechecks, lints, tests, and builds. `npm run release:check` also packs `release/` and installs that tarball outside the workspace. It does not publish.
 
-## Agents
-
-After a build, the MCP server is:
+Publish only after the check passes. `release:check` runs from the repository root. `npm publish` runs from `release/`:
 
 ```powershell
-node packages/mcp/dist/server.js
+npm login
+npm whoami
+npm run release:check
+cd release
+npm publish --access public
 ```
-
-Its tools call the same core functions as the CLI. See `docs/MCP.md`.
-
-`integrations/agents/cursor/hooks.example.json` is a Cursor stop hook. It is not installed here. Copy it to `.cursor/hooks.json` when an agent stop should audit the worktree.
 
 ## Documentation
 
@@ -162,3 +182,4 @@ Its tools call the same core functions as the CLI. See `docs/MCP.md`.
 - `docs/STATUS.md`
 - `docs/USABILITY_FINDINGS.md`
 - `docs/ADR/`
+- `CHANGELOG.md`

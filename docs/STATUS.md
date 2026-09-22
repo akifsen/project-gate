@@ -46,4 +46,4 @@
 
 ## Current V1 blockers
 
-- None known from `npm run check` on 2026-09-22 (typecheck, lint, 39 tests, build). The supported install path is `npm install`, `npm run build`, `npm link`, then `projectgate --help`.
+- Public package `@akifsen/project-gate` is prepared in `release/` and is not published. Contributors still use `npm install`, `npm run build`, and `npm link`.

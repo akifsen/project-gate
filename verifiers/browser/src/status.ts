@@ -16,7 +16,7 @@ export async function browserInstallStatus(): Promise<BrowserInstallStatus> {
       playwright: true,
       chromiumInstalled,
       chromiumPath,
-      detail: chromiumInstalled ? null : `Chromium is not installed at ${chromiumPath}. Run npx playwright install chromium.`,
+      detail: chromiumInstalled ? null : "Playwright is available but Chromium is not installed. Run: npx playwright install chromium",
     };
   } catch (error) {
     return {

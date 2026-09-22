@@ -29,6 +29,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
     .name(product.command)
     .description(`${product.name} decides whether a change is actually done.`)
     .exitOverride()
+    .version(product.version)
     .configureOutput({
       writeOut: (text) => io.stdout(text),
       writeErr: (text) => io.stderr(text),

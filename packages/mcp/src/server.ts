@@ -70,7 +70,7 @@ const tools: { name: (typeof toolNames)[number]; description: string; inputSchem
 ];
 
 export function createMcpServer(): McpServer {
-  const server = new McpServer({ name: product.codename, version: "0.1.0" });
+  const server = new McpServer({ name: product.codename, version: product.version });
   for (const tool of tools) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, async (args) => {
       try {

@@ -1,0 +1,2 @@
+# The files allowlist in package.json decides the tarball.
+# This file exists so the repository .gitignore does not drop release/dist.

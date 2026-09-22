@@ -1,6 +1,10 @@
 node_modules/
 dist/
 *.tsbuildinfo
+*.tgz
+release/README.md
+release/LICENSE
+release/CHANGELOG.md
 .projectgate/runtime/
 coverage/
 fixtures/avatar-profile/data/
