@@ -1,7 +1,7 @@
-import { loadProject } from "@projectgate/config";
+import { discoverRepository, loadProject, type ProjectConfig } from "@projectgate/config";
 import { loadContract, type ChangeContract } from "@projectgate/contracts";
 import { requireActiveContract } from "./contract-flow.js";
-import type { Finding, ReleasePacket } from "@projectgate/domain";
+import type { Finding, ImpactSummary, ReleasePacket } from "@projectgate/domain";
 import { dependencySnapshotChanged } from "@projectgate/domain";
 import { openStore } from "@projectgate/evidence";
 import { analyzeImpact, collectChange, inferImpactEdges, type ChangeSet } from "@projectgate/impact-engine";
@@ -124,8 +124,9 @@ async function runPipeline(options: RunOptions & { kind: "audit" | "verify" }): 
         limitations.push("No browser route checks were planned because the contract does not name routes or UI states. Baseline commands still run.");
       }
     }
+    explainPlanningGaps(limitations, impact, config, change, planned);
     if (planned.length === 0) {
-      limitations.push("No checks were planned. Project Gate did not find configured commands, architecture rules, contract routes, or UI states. Run projectgate inspect and add scripts to package.json or commands to .projectgate/verification.yml.");
+      limitations.push("No checks were planned. Project Gate did not find a ready command whose files overlap this change. Run projectgate inspect --verbose. Configured commands and toolchain baselines are used only when they apply; Project Gate does not install dependencies during audit.");
     }
     const ids = new Set<string>();
     for (const check of planned) {
@@ -219,12 +220,63 @@ function humanReview(patterns: readonly string[], change: ChangeSet): boolean {
 }
 
 function persist(root: string, store: ReturnType<typeof openStore>, packet: ReleasePacket): ReleasePacket {
-  store.save(packet);
+  const profiled = withModules(root, packet);
+  store.save(profiled);
   const runDir = path.join(root, product.configDir, "runtime", "runs", packet.runId);
   fs.mkdirSync(runDir, { recursive: true });
-  fs.writeFileSync(path.join(runDir, "report.html"), renderHtml(packet));
-  fs.writeFileSync(path.join(runDir, "fix-packet.json"), `${JSON.stringify(toFixPacket(packet), null, 2)}\n`);
-  return packet;
+  fs.writeFileSync(path.join(runDir, "report.html"), renderHtml(profiled));
+  fs.writeFileSync(path.join(runDir, "fix-packet.json"), `${JSON.stringify(toFixPacket(profiled), null, 2)}\n`);
+  return profiled;
+}
+
+function withModules(root: string, packet: ReleasePacket): ReleasePacket {
+  try {
+    const modules = discoverRepository(root).modules
+      .filter((module) => module.languages.length > 0 || module.frameworks.length > 0 || module.commands.length > 0)
+      .map((module) => ({
+        path: module.path,
+        languages: module.languages,
+        frameworks: module.frameworks,
+        packageManagers: module.packageManagers,
+        checks: module.commands.filter((command) => command.ready).map((command) => `${command.command} ${command.args.join(" ")}`.trim()),
+      }));
+    return { ...packet, modules };
+  } catch {
+    return packet;
+  }
+}
+
+function explainPlanningGaps(
+  limitations: string[],
+  impact: ImpactSummary,
+  config: ProjectConfig,
+  change: ChangeSet,
+  planned: { id: string }[],
+): void {
+  const plannedIds = new Set(planned.map((check) => check.id));
+  let skipped = 0;
+  for (const command of config.commands) {
+    if (plannedIds.has(`shell:${command.id}`) || change.files.length === 0 || command.invalidatesOn.length === 0) continue;
+    const matched = change.files.some((file) => matchAnyGlob(command.invalidatesOn, file.path) || (command.cwd !== undefined && (file.path === command.cwd || file.path.startsWith(`${command.cwd}/`))));
+    if (matched) continue;
+    if (skipped < 8) {
+      limitations.push(`${command.title} skipped: changed files do not overlap ${command.cwd ?? "this command"}.`);
+    }
+    skipped += 1;
+  }
+  const dartChanged = impact.changedFiles.some((file) => file.adapter === "dart" && (file.category === "APPLICATION" || file.category === "TEST"));
+  const flutterReady = config.commands.some((command) => command.command === "flutter" || command.command === "dart");
+  if (dartChanged && !flutterReady) {
+    limitations.push("Dart or Flutter files changed, but flutter/dart is not available for baseline checks. Install the SDK or add a command in .projectgate/verification.yml. Project Gate does not install packages or run platform builds during audit.");
+  }
+  if (impact.changedFiles.some((file) => file.adapter === "dart" && (file.subtype === "SCREEN" || file.subtype === "PAGE"))) {
+    limitations.push("Native Flutter runtime verifier is unavailable. Playwright does not verify Flutter UI. Widget, golden, or integration coverage has to be configured before a screen change can be proved.");
+  }
+  const javaChanged = impact.changedFiles.some((file) => file.adapter === "java" && file.category === "APPLICATION");
+  const javaReady = config.commands.some((command) => /mvn|mvnw|gradle/.test(command.command));
+  if (javaChanged && !javaReady) {
+    limitations.push("Java or Kotlin sources changed, but Maven or Gradle is not ready. Prefer the project wrapper. Project Gate does not download dependencies during audit.");
+  }
 }
 
 export function latestPacket(root: string): ReleasePacket | null {

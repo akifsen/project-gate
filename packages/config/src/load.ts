@@ -67,6 +67,7 @@ export function loadProject(root: string): ProjectConfig {
         group: command.group ?? command.title,
       };
       if (command.criterion) mapped.criterionId = command.criterion;
+      if (command.cwd) mapped.cwd = command.cwd;
       return mapped;
     })),
     discoverBaseline: verification.discover_baseline,
@@ -100,15 +101,19 @@ function mergeCommands(root: string, discoverBaseline: boolean, configured: Shel
   const known = new Set(configured.map((command) => command.id));
   const discovered = discoverCommands(root)
     .filter((command) => !known.has(command.id))
-    .map((command) => ({
-      id: command.id,
-      title: command.title,
-      command: command.command,
-      args: command.args,
-      invalidatesOn: [],
-      evidence: "EXECUTABLE" as const,
-      group: command.group,
-    }));
+    .map((command) => {
+      const mapped: ShellCommandConfig = {
+        id: command.id,
+        title: command.title,
+        command: command.command,
+        args: command.args,
+        invalidatesOn: command.invalidatesOn,
+        evidence: "EXECUTABLE" as const,
+        group: command.group,
+      };
+      if (command.cwd) mapped.cwd = command.cwd;
+      return mapped;
+    });
   return [...configured, ...discovered];
 }
 

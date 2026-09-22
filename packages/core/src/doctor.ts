@@ -32,6 +32,26 @@ export async function doctor(root: string): Promise<DoctorReport> {
   checks.push(inside.status === 0 && inside.stdout.trim() === "true" ? { status: "ok", label: "Repository", detail: "detected" } : { status: "warn", label: "Repository", detail: "not a git work tree" });
   const discovery = discoverRepository(root);
   checks.push({ status: discovery.packageManager ? "ok" : "warn", label: "Package manager", detail: discovery.packageManager ?? "not detected" });
+  for (const module of discovery.modules) {
+    if (module.languages.length === 0 && module.frameworks.length === 0 && module.commands.length === 0) continue;
+    const prefix = module.path === "." ? "" : `${module.path} `;
+    for (const language of module.languages) checks.push({ status: "ok", label: trimLabel(`${prefix}${language}`), detail: "detected" });
+    for (const framework of module.frameworks) checks.push({ status: "ok", label: trimLabel(`${prefix}${framework}`), detail: "detected" });
+    for (const manager of module.packageManagers) checks.push({ status: "ok", label: trimLabel(`${prefix}${manager}`), detail: "detected" });
+    for (const command of module.commands) {
+      const available = command.ready && executable(command.command);
+      checks.push({
+        status: available ? "ok" : "warn",
+        label: trimLabel(`${prefix}${command.title}`),
+        detail: available ? `${command.command} ${command.args.join(" ")}`.trim() : `${command.command} is not available`,
+      });
+    }
+    for (const capability of module.capabilities) {
+      if (capability.ready || capability.source.includes("not configured") || capability.source.includes("not run") || capability.source.includes("not started")) continue;
+      if (module.commands.some((command) => capability.name.includes(command.command))) continue;
+      checks.push({ status: "warn", label: trimLabel(`${prefix}${capability.name}`), detail: capability.source });
+    }
+  }
   const projectFile = path.join(root, product.configDir, "project.yml");
   if (!fs.existsSync(projectFile)) {
     checks.push({ status: "warn", label: "Project config", detail: "missing" });
@@ -99,4 +119,15 @@ function nodeSupported(version: string): boolean {
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function trimLabel(value: string): string {
+  return value.length > 40 ? `${value.slice(0, 37)}...` : value;
+}
+
+function executable(command: string): boolean {
+  if (command.includes("/") || command.startsWith(".") || /\.(cmd|bat)$/i.test(command)) return true;
+  const base = command.split(/[\\/]/).pop() ?? command;
+  const finder = process.platform === "win32" ? "where" : "which";
+  return spawnSync(finder, [base], { encoding: "utf8", windowsHide: true }).status === 0;
 }

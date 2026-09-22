@@ -13,6 +13,7 @@ export interface ShellCommandConfig {
   invalidatesOn: string[];
   evidence: EvidenceClass;
   group: string;
+  cwd?: string;
 }
 
 export interface EnvironmentPolicy {
@@ -63,6 +64,22 @@ export const projectFileSchema = z
         browser_app: z.boolean().default(false),
         git: z.boolean().default(false),
         runtime_proposal: z.string().nullable().default(null),
+        modules: z
+          .array(
+            z
+              .object({
+                path: z.string(),
+                languages: z.array(z.string()).default([]),
+                frameworks: z.array(z.string()).default([]),
+                package_managers: z.array(z.string()).default([]),
+                source_roots: z.array(z.string()).default([]),
+                test_roots: z.array(z.string()).default([]),
+                capabilities: z.array(z.string()).default([]),
+                commands: z.array(z.string()).default([]),
+              })
+              .strict(),
+          )
+          .default([]),
       })
       .strict()
       .optional(),
@@ -160,6 +177,7 @@ export const verificationFileSchema = z
             invalidates_on: z.array(z.string().min(1)).default([]),
             evidence: z.enum(["OBSERVED", "RUNTIME", "EXECUTABLE", "STATIC", "INFERRED", "HUMAN"]).default("EXECUTABLE"),
             group: z.string().min(1).optional(),
+            cwd: z.string().min(1).optional(),
           })
           .strict(),
       )

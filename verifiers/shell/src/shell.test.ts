@@ -37,6 +37,39 @@ describe("shell verifier", () => {
     expect(checks).toHaveLength(1);
     expect(checks[0]?.dependencyPatterns).toEqual(["src/**"]);
   });
+
+  it("skips a module command when the change is outside that module", () => {
+    const checks = verifier.plan({
+      root: process.cwd(),
+      changedFiles: ["apps/mobile/lib/main.dart"],
+      contract: { acceptance: [] } as unknown as PlanningContext["contract"],
+      config: {
+        commands: [
+          {
+            id: "maven-test",
+            title: "Maven test",
+            command: "mvnw.cmd",
+            args: ["test"],
+            invalidatesOn: ["services/api/**/*.java"],
+            evidence: "EXECUTABLE",
+            group: "Test",
+            cwd: "services/api",
+          },
+          {
+            id: "flutter-test",
+            title: "Flutter test",
+            command: "flutter",
+            args: ["test"],
+            invalidatesOn: ["apps/mobile/**/*.dart"],
+            evidence: "EXECUTABLE",
+            group: "Test",
+            cwd: "apps/mobile",
+          },
+        ],
+      } as PlanningContext["config"],
+    });
+    expect(checks.map((check) => check.id)).toEqual(["shell:flutter-test"]);
+  });
 });
 
 function check(args: string[]): VerificationCheck {

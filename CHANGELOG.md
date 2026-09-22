@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+Discovery is now a set of technology adapters instead of a Node/PHP-only scan. A repository can contain more than one stack, and Project Gate reports each module separately.
+
+- Dart/Flutter, Java with Maven or Gradle, Spring Boot, Python, .NET, Go, Rust, and Android are detected from their own manifests
+- Changed source files stay in one category: application, test, configuration, documentation, asset, generated, Project Gate internal, or unknown
+- Flutter baseline planning is `flutter analyze` and `flutter test` when the SDK is available. Platform builds are not started automatically
+- Spring mappings, Laravel routes, and the existing Node route extractors become product surfaces. A class is not a surface by itself
+- Clearly separated task text becomes multiple user-supplied criteria. One sentence stays one criterion. No model provider is required
+- Module commands run only when the change overlaps that module. Audit does not install dependencies
+
 ## 0.1.0
 
 First public release of `@akifsen/project-gate`.

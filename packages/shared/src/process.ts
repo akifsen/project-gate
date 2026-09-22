@@ -77,7 +77,27 @@ export function runProcess(options: {
   });
 }
 
-const WINDOWS_SHIMS = new Set(["npm", "npx", "pnpm", "yarn", "corepack", "composer"]);
+const WINDOWS_SHIMS = new Set([
+  "npm",
+  "npx",
+  "pnpm",
+  "yarn",
+  "corepack",
+  "composer",
+  "flutter",
+  "dart",
+  "mvn",
+  "gradle",
+  "dotnet",
+  "go",
+  "cargo",
+  "python",
+  "py",
+  "php",
+  "pip",
+  "poetry",
+  "uv",
+]);
 
 function spawnCommand(options: { command: string; args: readonly string[]; cwd: string; env?: NodeJS.ProcessEnv }) {
   const stdio = {
@@ -85,7 +105,9 @@ function spawnCommand(options: { command: string; args: readonly string[]; cwd: 
     env: { ...process.env, ...options.env },
     windowsHide: true,
   };
-  if (process.platform === "win32" && WINDOWS_SHIMS.has(options.command)) {
+  const base = options.command.split(/[\\/]/).pop() ?? options.command;
+  const windowsCommand = process.platform === "win32" && (WINDOWS_SHIMS.has(base) || /\.(cmd|bat)$/i.test(base));
+  if (windowsCommand) {
     const line = [options.command, ...options.args].map(quoteCmd).join(" ");
     return spawn(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", line], stdio);
   }

@@ -1,10 +1,12 @@
-import { brief, redactText, runProcess } from "@projectgate/shared";
+import { brief, matchAnyGlob, redactText, runProcess } from "@projectgate/shared";
 import type { EvidenceDraft, ExecutionContext, PlanningContext, VerificationCheck, VerificationResult, Verifier } from "@projectgate/verifier-sdk";
 import { sourcePatterns } from "@projectgate/verifier-sdk";
+import path from "node:path";
 
 interface ShellInput {
   command: string;
   args: string[];
+  cwd?: string;
 }
 
 export class ShellVerifier implements Verifier {
@@ -16,7 +18,11 @@ export class ShellVerifier implements Verifier {
   }
 
   plan(context: PlanningContext): VerificationCheck[] {
-    return context.config.commands.map((command) => {
+    return context.config.commands.flatMap((command) => {
+      if (context.changedFiles.length > 0 && command.invalidatesOn.length > 0) {
+        const matched = context.changedFiles.some((file) => matchAnyGlob(command.invalidatesOn, file) || (command.cwd !== undefined && (file === command.cwd || file.startsWith(`${command.cwd}/`))));
+        if (!matched) return [];
+      }
       const check: VerificationCheck = {
         id: `shell:${command.id}`,
         verifierId: this.id,
@@ -31,13 +37,13 @@ export class ShellVerifier implements Verifier {
         dependencyPatterns: sourcePatterns(command.invalidatesOn),
         reproduction: [`${command.command} ${command.args.join(" ")}`.trim()],
         suspects: [],
-        input: { command: command.command, args: command.args } satisfies ShellInput,
+        input: { command: command.command, args: command.args, ...(command.cwd ? { cwd: command.cwd } : {}) } satisfies ShellInput,
       };
       if (command.criterionId) {
         check.criterionId = command.criterionId;
         check.requirement = context.contract.acceptance.find((item) => item.id === command.criterionId)?.description;
       }
-      return check;
+      return [check];
     });
   }
 
@@ -46,7 +52,7 @@ export class ShellVerifier implements Verifier {
     const result = await runProcess({
       command: input.command,
       args: input.args,
-      cwd: context.root,
+      cwd: input.cwd ? path.resolve(context.root, input.cwd) : context.root,
       timeoutMs: context.timeouts.commandMs,
     });
     const stdout = redactText(result.stdout).text;

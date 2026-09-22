@@ -51,7 +51,21 @@ function sortValue(value: unknown): unknown {
   return value;
 }
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "coverage"]);
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "coverage",
+  "vendor",
+  "target",
+  ".gradle",
+  ".dart_tool",
+  ".next",
+  "build",
+  ".idea",
+  ".cursor",
+  "obj",
+]);
 
 export function listProjectFiles(root: string): string[] {
   const files: string[] = [];

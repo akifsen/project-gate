@@ -78,6 +78,9 @@ export interface ImpactSummary {
     path: string;
     status: string;
     role: string;
+    category?: string;
+    subtype?: string;
+    adapter?: string;
     confidence: Confidence;
     source: string;
   }[];
@@ -137,4 +140,11 @@ export interface ReleasePacket {
   verdict: Verdict;
   limitations: string[];
   environment: string;
+  modules?: {
+    path: string;
+    languages: string[];
+    frameworks: string[];
+    packageManagers: string[];
+    checks: string[];
+  }[];
 }

@@ -17,7 +17,7 @@ export interface InspectResult {
   change?: ChangeSet;
   surfaces: number;
   unresolved: string[];
-  classified: { path: string; status: string; role: string; confidence: string; source: string }[];
+  classified: { path: string; status: string; role: string; category?: string; subtype?: string; adapter?: string; confidence: string; source: string }[];
   gitError?: string;
 }
 
@@ -63,9 +63,14 @@ function summarizeContract(contract: ChangeContract): NonNullable<InspectResult[
 function countRoutes(root: string): number {
   let count = 0;
   for (const file of listProjectFiles(root)) {
-    if (!/\.(php|tsx|jsx|js|ts)$/.test(file)) continue;
+    if (!/\.(php|tsx|jsx|js|ts|java|kt|py|cs|go|dart)$/.test(file)) continue;
     const absolute = path.join(root, file);
     if (!fs.existsSync(absolute)) continue;
+    try {
+      if (fs.statSync(absolute).size > 200_000) continue;
+    } catch {
+      continue;
+    }
     let text = "";
     try {
       text = fs.readFileSync(absolute, "utf8");
@@ -92,9 +97,11 @@ export function formatInspect(result: InspectResult, verbose = false): string {
     `  Frontend: ${discovery.frontend ?? "not detected"}`,
     `  Backend: ${discovery.backend ?? "not detected"}`,
     `  Package manager: ${discovery.packageManager ?? "not detected"}`,
+    ...moduleLines(discovery, verbose),
     "",
     "Commands",
-    ...(discovery.commands.length === 0 ? ["  none discovered"] : discovery.commands.map((command) => `  ${command.title}: ${command.command} ${command.args.join(" ")}`.trim())),
+    ...(discovery.commands.length === 0 ? ["  none discovered"] : discovery.commands.map((command) => `  ${command.id.padEnd(16)} ${command.command} ${command.args.join(" ")}`.trim())),
+    ...unavailableCommands(discovery),
     "",
     "Browser application",
     `  Detected: ${discovery.browserApp ? "yes" : "no"}`,
@@ -121,7 +128,8 @@ export function formatInspect(result: InspectResult, verbose = false): string {
     if (verbose) {
       lines.push("", "Classified files");
       for (const file of result.classified) {
-        lines.push(`  ${file.status} ${file.path} role=${file.role} confidence=${file.confidence} source=${file.source}`);
+        lines.push(`  ${file.status} ${file.path}`);
+        lines.push(`    ${file.category ?? file.role}/${file.subtype ?? file.role} adapter=${file.adapter ?? "path"} confidence=${file.confidence} source=${file.source}`);
       }
       if (result.unresolved.length > 0) {
         lines.push("", "Unresolved", ...result.unresolved.map((file) => `  ${file}`));
@@ -136,6 +144,31 @@ export function formatInspect(result: InspectResult, verbose = false): string {
     lines.push("", "Next:", "", "projectgate audit");
   }
   return lines.join("\n");
+}
+
+function moduleLines(discovery: Discovery, verbose: boolean): string[] {
+  const visible = discovery.modules.filter((module) => module.languages.length > 0 || module.frameworks.length > 0);
+  if (visible.length === 0) return [];
+  const lines = ["", "Modules"];
+  for (const module of visible) {
+    lines.push("", module.path);
+    for (const item of [...module.languages, ...module.frameworks, ...module.packageManagers]) lines.push(`  ${item}`);
+    const structure = [...module.sourceRoots, ...module.testRoots];
+    if (structure.length > 0) lines.push(`  structure: ${structure.join(", ")}`);
+    if (verbose && module.adapterIds.length > 0) lines.push(`  adapters: ${module.adapterIds.join(", ")}`);
+    if (verbose) {
+      for (const capability of module.capabilities) {
+        lines.push(`  capability: ${capability.name} ready=${capability.ready} source=${capability.source} adapter=${capability.adapter}`);
+      }
+    }
+  }
+  return lines;
+}
+
+function unavailableCommands(discovery: Discovery): string[] {
+  const missing = discovery.modules.flatMap((module) => module.commands.filter((command) => !command.ready));
+  if (missing.length === 0) return [];
+  return ["", "Commands not executable", ...missing.map((command) => `  ${command.id}: ${command.command} is not available`)];
 }
 
 export function detectStack(root: string): string[] {

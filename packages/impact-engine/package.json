@@ -11,6 +11,7 @@
   },
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@projectgate/config": "0.1.0",
     "@projectgate/contracts": "0.1.0",
     "@projectgate/domain": "0.1.0",
     "@projectgate/model": "0.1.0",

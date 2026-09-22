@@ -124,7 +124,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
             `Title: ${draft.contract.change.title}`,
             `Criteria: ${draft.contract.acceptance.length}`,
             `Required: ${required}`,
-            draft.inferred > 0 ? `${draft.inferred} criteria inferred from the implementation. Review before treating them as authoritative requirements.` : "Evidence class for the supplied criterion: EXECUTABLE, checked by the discovered test command when one exists.",
+            draft.inferred > 0 ? `${draft.inferred} criteria inferred from the implementation. Review before treating them as authoritative requirements.` : `Evidence: ${[...new Set(draft.contract.acceptance.map((item) => item.evidence))].join(", ")}.`,
             draft.linkedTest ? "Linked the discovered test command to AC-001." : "",
             ...draft.warnings.map((warning) => warning),
             "",
@@ -206,6 +206,10 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
           ...(opts.infer ? { infer: true } : {}),
         });
         if (opts.verbose) {
+          for (const file of packet.impact.changedFiles) {
+            const surfaces = packet.impact.surfaces.filter((surface) => surface.files.includes(file.path)).map((surface) => surface.id);
+            packet.limitations.push(`FILE ${file.path} | ${file.category ?? file.role}/${file.subtype ?? file.role} | adapter=${file.adapter ?? "path"} | source=${file.source} | surface=${surfaces.join(", ") || "none"}`);
+          }
           packet.limitations.push(...packet.checks.map((check) => `${check.id}: ${check.why}`));
         }
         const paths = outputPaths(packet.runId);

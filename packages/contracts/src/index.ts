@@ -1,4 +1,4 @@
-export { buildDiffContract, buildTaskContract, writeActiveContract } from "./author.js";
+export { buildDiffContract, buildTaskContract, evidenceForRequirement, splitRequirements, writeActiveContract } from "./author.js";
 export type { CriterionOrigin } from "./author.js";
 export { proposeContract } from "./propose.js";
 export {

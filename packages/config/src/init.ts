@@ -1,8 +1,9 @@
 import { product } from "@projectgate/shared";
 import fs from "node:fs";
 import path from "node:path";
-import { stringify } from "yaml";
-import { discoverRepository, type Discovery } from "./discover.js";
+import { parse, stringify } from "yaml";
+import { discoverRepository, type Discovery, type DiscoveredCommand } from "./discover.js";
+import { verificationFileSchema } from "./schema.js";
 
 export interface InitResult {
   created: string[];
@@ -20,7 +21,6 @@ export function initProject(root: string, projectName: string): InitResult {
     "project.yml": projectYaml(projectName, discovery),
     "architecture.yml": `schema_version: 1\nlayers: []\nforbidden_edges: []\nrules: []\n`,
     "ui.yml": `schema_version: 1\nrequired_states:\n  - loading\n  - empty\n  - error\n  - success\nresponsive:\n  widths: [390, 768, 1440]\n  heights: [844, 1024, 900]\naccessibility:\n  enabled: true\nvisual:\n  min_target_px: 24\n  invalidates_on:\n    - "**/*.css"\n    - "**/*.html"\n    - "**/*.tsx"\n    - "**/*.jsx"\n    - "**/*.vue"\n`,
-    "verification.yml": verificationYaml(discovery),
     "security.yml": `schema_version: 1\nhuman_review_when: []\nredact_evidence: true\n`,
     "environments.yml": `schema_version: 1\nlocal: {}\n`,
     "contract.template.yml": contractTemplate(),
@@ -31,6 +31,7 @@ export function initProject(root: string, projectName: string): InitResult {
     fs.writeFileSync(target, contents);
     created.push(`${product.configDir}/${name}`);
   }
+  mergeVerification(dir, discovery, created);
   const ignore = path.join(root, ".gitignore");
   const line = `${product.configDir}/runtime/`;
   const existing = fs.existsSync(ignore) ? fs.readFileSync(ignore, "utf8") : "";
@@ -57,6 +58,18 @@ function projectYaml(projectName: string, discovery: Discovery): string {
       browser_app: discovery.browserApp,
       git: discovery.git,
       runtime_proposal: discovery.runtimeProposal,
+      modules: discovery.modules
+        .filter((module) => module.languages.length > 0 || module.frameworks.length > 0 || module.commands.length > 0)
+        .map((module) => ({
+          path: module.path,
+          languages: module.languages,
+          frameworks: module.frameworks,
+          package_managers: module.packageManagers,
+          source_roots: module.sourceRoots,
+          test_roots: module.testRoots,
+          capabilities: module.capabilities.map((item) => item.name),
+          commands: module.commands.filter((command) => command.ready).map((command) => command.id),
+        })),
     },
   });
 }
@@ -66,16 +79,47 @@ function verificationYaml(discovery: Discovery): string {
     schema_version: 1,
     timeouts: { command_ms: 300000, http_ms: 15000, browser_ms: 30000 },
     discover_baseline: true,
-    commands: discovery.commands.map((command) => ({
-      id: command.id,
-      title: command.title,
-      command: command.command,
-      args: command.args,
-      evidence: "EXECUTABLE",
-      group: command.group,
-      invalidates_on: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.php", "**/*.vue", "**/*.css", "**/*.html"],
-    })),
+    commands: discovery.commands.map(commandRecord),
   });
+}
+
+function commandRecord(command: DiscoveredCommand): {
+  id: string;
+  title: string;
+  command: string;
+  args: string[];
+  evidence: "EXECUTABLE";
+  group: string;
+  invalidates_on: string[];
+  cwd?: string;
+} {
+  return {
+    id: command.id,
+    title: command.title,
+    command: command.command,
+    args: command.args,
+    evidence: "EXECUTABLE",
+    group: command.group,
+    invalidates_on: command.invalidatesOn.length > 0 ? command.invalidatesOn : ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.php", "**/*.vue", "**/*.css", "**/*.html"],
+    ...(command.cwd ? { cwd: command.cwd } : {}),
+  };
+}
+
+function mergeVerification(dir: string, discovery: Discovery, created: string[]): void {
+  const target = path.join(dir, "verification.yml");
+  if (!fs.existsSync(target)) {
+    fs.writeFileSync(target, verificationYaml(discovery));
+    created.push(`${product.configDir}/verification.yml`);
+    return;
+  }
+  const parsed = verificationFileSchema.safeParse(parse(fs.readFileSync(target, "utf8")));
+  if (!parsed.success) return;
+  const known = new Set(parsed.data.commands.map((command) => command.id));
+  const additions = discovery.commands.filter((command) => !known.has(command.id)).map(commandRecord);
+  if (additions.length === 0) return;
+  parsed.data.commands.push(...additions);
+  fs.writeFileSync(target, stringify(parsed.data));
+  created.push(`${product.configDir}/verification.yml`);
 }
 
 function constitution(projectName: string): string {

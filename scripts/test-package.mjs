@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const releaseDir = path.join(root, "release");
+const expectedVersion = JSON.parse(fs.readFileSync(path.join(releaseDir, "package.json"), "utf8")).version;
 const forbidden = ["node_modules/", ".git/", ".github/", "coverage/", ".projectgate/runtime", "/src/", "fixtures/", ".tgz"];
 
 function quote(value) {
@@ -188,7 +189,7 @@ try {
   const help = run("npx", ["--no-install", "projectgate", "--help"], { cwd: app });
   if (!help.stdout.includes("audit")) throw new Error(help.stdout);
   const version = run("npx", ["--no-install", "projectgate", "--version"], { cwd: app });
-  if (!version.stdout.includes("0.1.0")) throw new Error(version.stdout);
+  if (!version.stdout.includes(expectedVersion)) throw new Error(version.stdout);
   if (version.stderr.includes("ExperimentalWarning")) throw new Error(version.stderr);
   const doctor = gate(app, ["doctor"], app);
   if (!doctor.includes("Storage") || !doctor.includes("healthy")) throw new Error(doctor);
@@ -216,7 +217,7 @@ try {
   const globalHelp = run("projectgate", ["--help"], { cwd: temp });
   if (!globalHelp.stdout.includes("audit")) throw new Error(globalHelp.output);
   const globalVersion = run("projectgate", ["--version"], { cwd: temp });
-  if (!globalVersion.stdout.includes("0.1.0")) throw new Error(globalVersion.output);
+  if (!globalVersion.stdout.includes(expectedVersion)) throw new Error(globalVersion.output);
   const globalDoctor = run("projectgate", ["doctor"], { cwd: temp });
   if (!globalDoctor.stdout.includes("healthy")) throw new Error(globalDoctor.output);
   if (globalDoctor.stderr.includes("ExperimentalWarning")) throw new Error(globalDoctor.stderr);

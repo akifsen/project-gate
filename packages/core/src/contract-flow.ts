@@ -62,14 +62,16 @@ export async function createChangeContract(options: {
     warnings.push(`${inferred} criteria inferred from the implementation. Review them before treating them as authoritative requirements.`);
   }
   const filePath = writeActiveContract(options.root, contractFile, options.replace ?? false);
-  const linkedTest = contractFile.acceptance.length === 1 && contractFile.acceptance[0]?.evidence === "EXECUTABLE"
-    ? linkCommandCriterion(options.root, "test", "AC-001") || linkCommandCriterion(options.root, "composer-test", "AC-001") || linkCommandCriterion(options.root, "artisan-test", "AC-001")
-    : false;
+  const singleExecutable = contractFile.acceptance.length === 1 && contractFile.acceptance[0]?.evidence === "EXECUTABLE";
+  const linkedTest = singleExecutable ? linkBaselineTest(options.root, contractFile.acceptance[0]?.id ?? "AC-001") : false;
   if (contractFile.acceptance.some((item) => item.origin === "INFERRED")) {
     warnings.push("Inferred criteria are marked origin INFERRED. They do not become proof.");
   }
-  if (!linkedTest && contractFile.acceptance[0]?.evidence === "EXECUTABLE") {
+  if (singleExecutable && !linkedTest) {
     warnings.push("No discovered test command was linked. Add one under .projectgate/verification.yml or run projectgate init after the test script exists.");
+  }
+  if (contractFile.acceptance.length > 1) {
+    warnings.push("Separated requirements stay independent. One test command is not treated as proof for every criterion.");
   }
   return { filePath, contract: loadContract(filePath), inferred, linkedTest, warnings };
 }
@@ -86,6 +88,12 @@ export function contractGuidance(): string {
     "",
     "projectgate contract --from-diff",
   ].join("\n");
+}
+
+const BASELINE_COMMANDS = ["test", "composer-test", "artisan-test", "flutter-test", "dart-test", "maven-test", "gradle-test", "android-test", "pytest", "django-test", "unittest", "dotnet-test", "go-test", "cargo-test"];
+
+function linkBaselineTest(root: string, criterionId: string): boolean {
+  return BASELINE_COMMANDS.some((id) => linkCommandCriterion(root, id, criterionId));
 }
 
 function criteriaFromChange(files: string[]): { description: string; evidence: "RUNTIME" | "EXECUTABLE" | "STATIC" }[] {

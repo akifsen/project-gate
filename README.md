@@ -10,6 +10,8 @@ It connects a Change Contract to impact, verification, evidence, and a verdict. 
 - Git
 - Windows PowerShell and other shells are both supported
 
+`init` and `inspect` read Node, PHP/Laravel, Dart/Flutter, Java/Maven/Gradle/Spring Boot, Python, .NET, Go, Rust, and Android projects. A repository can contain more than one of these. Flutter UI is not treated as a browser app, and audit does not install dependencies or start emulators.
+
 ## Quick start
 
 Install the published package. `npm link` is only for people working on this repository.
@@ -66,7 +68,7 @@ projectgate contract
 
 `projectgate plan` prints the verification plan without running it. `projectgate audit --verbose` and `projectgate inspect --verbose` add classification and check rationale.
 
-`contract --task` creates criterion `AC-001` with evidence class `EXECUTABLE` and links the discovered test command when one exists. That proves the test ran. It does not prove browser behavior. Set `evidence: RUNTIME`, plus routes or UI states, when the change has to be observed in the running app. Set `local.start` and `local.ready_url` in `.projectgate/environments.yml` before runtime checks can start the app. A proposed `dev` or `start` script is reported by `inspect` and is not launched automatically.
+`contract --task` splits obvious separate requirements (sentences, semicolons, bullets, or numbered lines) into user-supplied criteria. A single sentence stays one criterion. When that one criterion is executable, Project Gate links the discovered test command. That proves the test ran. It does not prove browser or native UI behavior. Responsive, mobile, and accessibility clauses are marked `RUNTIME`. Set routes or UI states, and set `local.start` and `local.ready_url` or `local.base_url` in `.projectgate/environments.yml`, before a web runtime check can start the app. A proposed `dev` or `start` script is reported by `inspect` and is not launched automatically. Playwright is not evidence for Flutter UI.
 
 ## npx
 

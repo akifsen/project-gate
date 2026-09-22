@@ -11,9 +11,14 @@ export function formatSummary(packet: ReleasePacket, paths?: { json?: string; ht
   const executable = packet.checks.filter((check) => ["EXECUTABLE", "RUNTIME", "OBSERVED"].includes(check.expectedEvidence)).length;
   const runtime = packet.checks.filter((check) => check.expectedEvidence === "RUNTIME" || check.expectedEvidence === "OBSERVED").length;
   const files = packet.impact.changedFiles;
-  const application = files.filter((file) => file.role === "ui" || file.role === "api-server" || file.role === "api-client" || file.role === "style" || file.role === "migration").length;
-  const tests = files.filter((file) => file.role === "test").length;
-  const configuration = files.filter((file) => file.role === "config").length;
+  const application = files.filter((file) => categoryOf(file) === "APPLICATION").length;
+  const tests = files.filter((file) => categoryOf(file) === "TEST").length;
+  const configuration = files.filter((file) => categoryOf(file) === "CONFIGURATION").length;
+  const projectGate = files.filter((file) => categoryOf(file) === "PROJECT_GATE_INTERNAL").length;
+  const unknown = files.filter((file) => categoryOf(file) === "UNKNOWN").length;
+  const documentation = files.filter((file) => categoryOf(file) === "DOCUMENTATION").length;
+  const assets = files.filter((file) => categoryOf(file) === "ASSET").length;
+  const generated = files.filter((file) => categoryOf(file) === "GENERATED").length;
   const baseline = packet.checks.filter((check) => check.verifierId === "shell" && !check.criterionId).length;
   const lines = [
     product.name,
@@ -24,8 +29,13 @@ export function formatSummary(packet: ReleasePacket, paths?: { json?: string; ht
     `${application} application files`,
     `${tests} tests`,
     `${configuration} configuration files`,
+    ...(projectGate > 0 ? [`${projectGate} Project Gate configuration files`] : []),
+    ...(documentation > 0 ? [`${documentation} documentation files`] : []),
+    ...(assets > 0 ? [`${assets} asset files`] : []),
+    ...(generated > 0 ? [`${generated} generated files`] : []),
+    ...(unknown > 0 ? [`${unknown} unknown source files`] : []),
     `${packet.impact.surfaces.length} product surfaces affected`,
-    `${packet.impact.unresolvedFiles?.length ?? 0} unresolved files`,
+    `${packet.impact.unresolvedFiles?.length ?? unknown} unresolved files`,
     `${packet.criteria.total} verification criteria`,
     `${executable} executable checks`,
     `${runtime} runtime checks`,
@@ -66,6 +76,16 @@ export function formatSummary(packet: ReleasePacket, paths?: { json?: string; ht
   }
   lines.push("", "Next:", "", nextCommand(packet.verdict.state));
   return lines.join("\n");
+}
+
+function categoryOf(file: ReleasePacket["impact"]["changedFiles"][number]): string {
+  if (file.category) return file.category;
+  if (file.role === "test") return "TEST";
+  if (file.role === "config") return "CONFIGURATION";
+  if (file.role === "documentation") return "DOCUMENTATION";
+  if (file.role === "static") return "ASSET";
+  if (file.role === "unknown") return "UNKNOWN";
+  return "APPLICATION";
 }
 
 function nextCommand(state: ReleasePacket["verdict"]["state"]): string {
