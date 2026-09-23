@@ -20,6 +20,7 @@ import { createDefaultRegistry } from "./registry.js";
 import { openBrowserPool } from "@projectgate/browser";
 
 export interface RunOptions {
+  signal?: AbortSignal;
   root: string;
   against?: string;
   contractPath?: string;
@@ -170,6 +171,7 @@ async function runPipeline(options: RunOptions & { kind: "audit" | "verify" }): 
         carried,
         registry,
         context: {
+          ...(options.signal ? { signal: options.signal } : {}),
           root: options.root,
           runDir: path.join(options.root, product.configDir, "runtime", "runs", runId),
           config,

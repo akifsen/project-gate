@@ -1,8 +1,8 @@
 import { discoverRepository, loadProject, type Discovery } from "@projectgate/config";
 import type { ChangeContract } from "@projectgate/contracts";
 import { loadContract, placeholderProblems } from "@projectgate/contracts";
-import { analyzeImpact, collectChange, routesInFile, type ChangeSet } from "@projectgate/impact-engine";
-import { listProjectFiles, product } from "@projectgate/shared";
+import { analyzeImpact, collectChange, type ChangeSet } from "@projectgate/impact-engine";
+import { product } from "@projectgate/shared";
 import fs from "node:fs";
 import path from "node:path";
 import { createDefaultRegistry } from "./registry.js";
@@ -38,7 +38,7 @@ export async function inspectProject(root: string, against?: string): Promise<In
     projectName: config.project.name,
     root,
     discovery,
-    routeCount: countRoutes(root),
+    routeCount: discovery.modules.reduce((count, module) => count + module.routes.length, 0),
     verifiers: createDefaultRegistry().all().map((verifier) => verifier.id),
     ...(contract ? { contract: summarizeContract(contract) } : {}),
     ...(change ? { change } : {}),
@@ -58,29 +58,6 @@ function summarizeContract(contract: ChangeContract): NonNullable<InspectResult[
     hash: contract.hash,
     placeholder: placeholderProblems(contract).length > 0,
   };
-}
-
-function countRoutes(root: string): number {
-  let count = 0;
-  for (const file of listProjectFiles(root)) {
-    if (!/\.(php|tsx|jsx|js|ts|java|kt|py|cs|go|dart)$/.test(file)) continue;
-    const absolute = path.join(root, file);
-    if (!fs.existsSync(absolute)) continue;
-    try {
-      if (fs.statSync(absolute).size > 200_000) continue;
-    } catch {
-      continue;
-    }
-    let text = "";
-    try {
-      text = fs.readFileSync(absolute, "utf8");
-    } catch {
-      continue;
-    }
-    count += routesInFile(file, text).length;
-    if (count > 500) break;
-  }
-  return count;
 }
 
 export function formatInspect(result: InspectResult, verbose = false): string {
@@ -157,6 +134,12 @@ function moduleLines(discovery: Discovery, verbose: boolean): string[] {
     if (structure.length > 0) lines.push(`  structure: ${structure.join(", ")}`);
     if (verbose && module.adapterIds.length > 0) lines.push(`  adapters: ${module.adapterIds.join(", ")}`);
     if (verbose) {
+      for (const item of [...module.detections.languages, ...module.detections.frameworks, ...module.detections.packageManagers]) {
+        lines.push(`  detection: ${item.name} source=${item.source} confidence=${item.confidence} adapter=${item.adapter}`);
+      }
+      for (const item of module.manifests) lines.push(`  manifest: ${item.name} adapter=${item.adapter}`);
+      for (const command of module.commands) lines.push(`  command: ${command.id} source=${command.source} confidence=${command.confidence} adapter=${command.adapter}`);
+      for (const surface of module.productSurfaces) lines.push(`  surface: ${surface.type} ${surface.name} file=${surface.file} source=${surface.source} confidence=${surface.confidence} adapter=${surface.adapter}`);
       for (const capability of module.capabilities) {
         lines.push(`  capability: ${capability.name} ready=${capability.ready} source=${capability.source} adapter=${capability.adapter}`);
       }
@@ -168,7 +151,7 @@ function moduleLines(discovery: Discovery, verbose: boolean): string[] {
 function unavailableCommands(discovery: Discovery): string[] {
   const missing = discovery.modules.flatMap((module) => module.commands.filter((command) => !command.ready));
   if (missing.length === 0) return [];
-  return ["", "Commands not executable", ...missing.map((command) => `  ${command.id}: ${command.command} is not available`)];
+  return ["", "Commands not executable", ...missing.map((command) => `  ${command.id}: ${command.command} is not ready; check tooling and project setup (${command.source ?? "discovered capability"})`)];
 }
 
 export function detectStack(root: string): string[] {

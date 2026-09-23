@@ -14,6 +14,7 @@ export interface ShellCommandConfig {
   evidence: EvidenceClass;
   group: string;
   cwd?: string;
+  env?: Record<string, string>;
 }
 
 export interface EnvironmentPolicy {
@@ -178,6 +179,7 @@ export const verificationFileSchema = z
             evidence: z.enum(["OBSERVED", "RUNTIME", "EXECUTABLE", "STATIC", "INFERRED", "HUMAN"]).default("EXECUTABLE"),
             group: z.string().min(1).optional(),
             cwd: z.string().min(1).optional(),
+            env: z.record(z.string()).optional(),
           })
           .strict(),
       )

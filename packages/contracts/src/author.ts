@@ -54,7 +54,7 @@ function mergeWrapped(lines: string[]): string[] {
   let current = "";
   for (const line of lines) {
     const stripped = line.replace(/^([-*•]|\d+[.)])\s+/, "").trim();
-    const starts = /^([-*•]|\d+[.)])\s+/.test(line) || /[.!?;]$/.test(current);
+    const starts = /^([-*•]|\d+[.)])\s+/.test(line) || /[.!?;]$/.test(current) || /^(?:verify|ensure|keep|must|should|the\b|[\p{Lu}])/u.test(line);
     if (!current || starts) {
       if (current) blocks.push(current);
       current = stripped;

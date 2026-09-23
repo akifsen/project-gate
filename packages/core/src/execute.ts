@@ -31,7 +31,9 @@ export async function executeChecks(options: {
     const dependencies = expandPatterns(options.context.root, planned.dependencyPatterns);
     let result: VerificationResult;
     try {
-      result = normalize(planned, await options.registry.get(planned.verifierId).execute(planned, options.context));
+      result = options.context.signal?.aborted
+        ? { status: "UNKNOWN", evidence: [], findings: [], error: "Verification was cancelled before this check started." }
+        : normalize(planned, await options.registry.get(planned.verifierId).execute(planned, options.context));
     } catch (error) {
       result = {
         status: "ERROR",

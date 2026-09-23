@@ -24,7 +24,7 @@ describe("multi-stack discovery", () => {
     expect(module.frameworks).toContain("Flutter");
     expect(module.packageManagers).toContain("Flutter Pub");
     expect(module.capabilities.map((item) => item.name)).toEqual(expect.arrayContaining(["flutter analyze", "flutter test"]));
-    expect(module.commands.map((command) => command.args.join(" "))).toEqual(expect.arrayContaining(["analyze", "test"]));
+    expect(module.commands.map((command) => command.args.join(" "))).toEqual(expect.arrayContaining(["analyze --no-pub", "test --no-pub"]));
     expect(module.commands.every((command) => command.command === "flutter")).toBe(true);
     expect(module.commands.some((command) => command.args.includes("build"))).toBe(false);
     expect(module.languages).not.toContain("Java");
@@ -46,7 +46,7 @@ describe("multi-stack discovery", () => {
     expect(mavenModule.frameworks).toContain("Spring Boot");
     expect(mavenModule.packageManagers).toContain("Maven Wrapper");
     expect(mavenModule.commands.map((command) => command.id)).toContain("maven-test");
-    expect(mavenModule.commands.find((command) => command.id === "maven-test")?.args).toEqual(["test"]);
+    expect(mavenModule.commands.find((command) => command.id === "maven-test")?.args).toEqual(["--offline", "test"]);
     expect(mavenModule.capabilities.map((item) => item.name)).toEqual(expect.arrayContaining(["mvn test", "junit"]));
 
     const gradle = temp();

@@ -29,7 +29,7 @@ describe("audit fixtures", () => {
     const root = repo("pg-custom-");
     writePackage(root, "node -e \"process.exit(0)\"");
     fs.mkdirSync(path.join(root, "src", "custom"), { recursive: true });
-    fs.writeFileSync(path.join(root, "src", "custom", "thing.ts"), "export const value = 1;\n");
+    fs.writeFileSync(path.join(root, "src", "custom", "thing.zig"), "const value = 1;\n");
     commitBase(root);
 
     expect(await runCli(["init", "--cwd", root], capture())).toBe(0);
@@ -37,7 +37,7 @@ describe("audit fixtures", () => {
     const audit = capture();
     expect(await runCli(["audit", "--cwd", root], audit)).toBe(0);
     expect(audit.out).toContain("IMPACT ANALYSIS INCOMPLETE");
-    expect(audit.out).toContain("thing.ts");
+    expect(audit.out).toContain("thing.zig");
     expect(audit.out).toContain("✓ Test");
     expect(audit.out).not.toContain("No checks ran.");
     expect(audit.out).toContain("PASS");

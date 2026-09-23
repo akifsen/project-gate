@@ -1,7 +1,7 @@
 import { product } from "@projectgate/shared";
 import fs from "node:fs";
 import path from "node:path";
-import { parse, stringify } from "yaml";
+import { isSeq, parseDocument, stringify } from "yaml";
 import { discoverRepository, type Discovery, type DiscoveredCommand } from "./discover.js";
 import { verificationFileSchema } from "./schema.js";
 
@@ -92,6 +92,7 @@ function commandRecord(command: DiscoveredCommand): {
   group: string;
   invalidates_on: string[];
   cwd?: string;
+  env?: Record<string, string>;
 } {
   return {
     id: command.id,
@@ -102,6 +103,7 @@ function commandRecord(command: DiscoveredCommand): {
     group: command.group,
     invalidates_on: command.invalidatesOn.length > 0 ? command.invalidatesOn : ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.php", "**/*.vue", "**/*.css", "**/*.html"],
     ...(command.cwd ? { cwd: command.cwd } : {}),
+    ...(command.env ? { env: command.env } : {}),
   };
 }
 
@@ -112,13 +114,19 @@ function mergeVerification(dir: string, discovery: Discovery, created: string[])
     created.push(`${product.configDir}/verification.yml`);
     return;
   }
-  const parsed = verificationFileSchema.safeParse(parse(fs.readFileSync(target, "utf8")));
+  const document = parseDocument(fs.readFileSync(target, "utf8"));
+  if (document.errors.length > 0) return;
+  const parsed = verificationFileSchema.safeParse(document.toJS());
   if (!parsed.success) return;
+  if (!parsed.data.discover_baseline) return;
   const known = new Set(parsed.data.commands.map((command) => command.id));
   const additions = discovery.commands.filter((command) => !known.has(command.id)).map(commandRecord);
   if (additions.length === 0) return;
-  parsed.data.commands.push(...additions);
-  fs.writeFileSync(target, stringify(parsed.data));
+  if (!document.has("commands")) document.set("commands", []);
+  const commands = document.get("commands");
+  if (!isSeq(commands)) return;
+  for (const addition of additions) commands.add(addition);
+  fs.writeFileSync(target, document.toString());
   created.push(`${product.configDir}/verification.yml`);
 }
 

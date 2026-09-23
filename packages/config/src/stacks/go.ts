@@ -1,8 +1,10 @@
 import { emptyContribution, fact, type FileClassification, type ModuleContribution, type ModuleScan, type StackAdapter } from "./types.js";
+import { goRoutes } from "./surfaces.js";
 import { command, globs, modulePrefix, toolOnPath } from "./tools.js";
 
 export const goAdapter: StackAdapter = {
   id: "go",
+  routes: (file, text) => file.endsWith(".go") ? goRoutes(text) : [],
   classify(file: string): FileClassification | null {
     const base = file.split("/").pop() ?? file;
     if (base === "go.mod" || base === "go.sum") return hit("config", "CONFIGURATION", "CONFIG", "observed", "go-manifest");
@@ -15,15 +17,16 @@ export const goAdapter: StackAdapter = {
     if (!scan.exists("go.mod") && !scan.files.some((file) => file.endsWith(".go"))) return null;
     const result = emptyContribution();
     result.languages.push(fact("Go", scan.exists("go.mod") ? "go.mod" : "go file", "go"));
-    result.packageManagers.push(fact("Go modules", "go.mod", "go"));
+    if (scan.exists("go.mod")) result.packageManagers.push(fact("Go modules", "go.mod", "go"));
     const ready = toolOnPath("go");
     const prefix = modulePrefix(scan.path);
     const patterns = globs(scan.path, [".go"]);
     const cwd = scan.path === "." ? {} : { cwd: scan.path };
+    const moduleMode = scan.exists("vendor/modules.txt") ? "-mod=vendor" : "-mod=readonly";
     if (scan.exists("go.mod")) {
       result.commands.push(
-        command({ id: `${prefix}go-test`, title: "go test", command: "go", args: ["test", "./..."], group: "Test", invalidatesOn: patterns, ...cwd, ready }),
-        command({ id: `${prefix}go-vet`, title: "go vet", command: "go", args: ["vet", "./..."], group: "Static analysis", invalidatesOn: patterns, ...cwd, ready }),
+        command({ id: `${prefix}go-test`, title: "go test", command: "go", args: ["test", moduleMode, "./..."], env: { GOPROXY: "off", GOTOOLCHAIN: "local", GOSUMDB: "off" }, group: "Test", invalidatesOn: patterns, ...cwd, ready }),
+        command({ id: `${prefix}go-vet`, title: "go vet", command: "go", args: ["vet", moduleMode, "./..."], env: { GOPROXY: "off", GOTOOLCHAIN: "local", GOSUMDB: "off" }, group: "Static analysis", invalidatesOn: patterns, ...cwd, ready }),
       );
     }
     result.capabilities.push({ name: "go test", ready: ready && scan.exists("go.mod"), adapter: "go", source: "go test ./...", confidence: "observed" });

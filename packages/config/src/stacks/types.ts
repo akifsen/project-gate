@@ -1,4 +1,5 @@
 import type { Confidence } from "@projectgate/domain";
+import type { RouteHit } from "./surfaces.js";
 
 export type FileCategory = "APPLICATION" | "TEST" | "CONFIGURATION" | "DOCUMENTATION" | "ASSET" | "GENERATED" | "PROJECT_GATE_INTERNAL" | "UNKNOWN";
 
@@ -9,6 +10,7 @@ export interface FileClassification {
   adapter: string;
   confidence: Confidence;
   source: string;
+  surface?: "MOBILE_SCREEN";
 }
 
 export interface StackCommand {
@@ -20,6 +22,10 @@ export interface StackCommand {
   invalidatesOn: string[];
   cwd?: string;
   ready: boolean;
+  env?: Record<string, string>;
+  source?: string;
+  adapter?: string;
+  confidence?: Confidence;
 }
 
 export interface StackCapability {
@@ -59,6 +65,7 @@ export interface StackAdapter {
   id: string;
   classify(file: string): FileClassification | null;
   inspect(scan: ModuleScan): ModuleContribution | null;
+  routes?(file: string, text: string): RouteHit[];
 }
 
 export function emptyContribution(): ModuleContribution {

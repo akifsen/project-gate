@@ -13,6 +13,8 @@
 - Fix packets and a Cursor stop-hook adapter that is not enabled in this repo
 - Avatar fixture: broken change is BLOCKED, the fix is PASS, and the untouched mime check is carried
 - This repository's `.projectgate` configuration
+- Multi-stack adapters, provenance-preserving module profiles, and change-aware baseline discovery
+- Flutter/Spring/mixed fixtures installed from the npm tarball; see `MULTISTACK_VALIDATION.md`
 
 ## In progress
 
@@ -20,7 +22,7 @@
 
 ## Remaining
 
-- Framework adapters beyond the current route and import heuristics
+- Deeper framework parsing beyond bounded static route/import heuristics
 - Video and full HAR capture
 - CI workflow templates
 - Enabling the Cursor hook in a repository that wants it
@@ -36,7 +38,7 @@
 
 ## Known limitations
 
-- Import graphs are relative and one level of resolution, not `node_modules` graphs
+- Import graphs cover relative JS/Dart imports, Dart self-package imports, and ordinary explicit Java/JVM imports; reverse traversal is bounded to eight steps, without external dependency resolution
 - PHP analysis covers use statements and call expressions
 - Architecture scanning is limited to the diff
 - Network evidence is a JSON log, not a HAR
@@ -46,4 +48,4 @@
 
 ## Current V1 blockers
 
-- Public package `@akifsen/project-gate` is prepared in `release/` and is not published. Contributors still use `npm install`, `npm run build`, and `npm link`.
+- The next candidate is prepared in `release/`; this task does not publish it. Contributors use `npm ci`, `npm run build`, and optional `npm link`. Release validation uses isolated temporary installs.

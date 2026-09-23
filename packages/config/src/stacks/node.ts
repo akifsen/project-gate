@@ -1,5 +1,6 @@
 import { emptyContribution, fact, type FileClassification, type ModuleContribution, type ModuleScan, type StackAdapter } from "./types.js";
-import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf } from "./tools.js";
+import { nodeRoutes } from "./surfaces.js";
+import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf, toolOnPath, safeManifestScript } from "./tools.js";
 
 const SCRIPTS = [
   { id: "build", title: "Build", script: "build", group: "Build" },
@@ -8,18 +9,21 @@ const SCRIPTS = [
   { id: "typecheck", title: "Typecheck", script: "typecheck", group: "Typecheck" },
   { id: "check", title: "Check", script: "check", group: "Check" },
   { id: "e2e", title: "End to end", script: "e2e", group: "E2E" },
+  { id: "integration", title: "Integration", script: "integration", group: "Integration" },
 ] as const;
 
 export const nodeAdapter: StackAdapter = {
   id: "node",
+  routes: (file, text) => /\.[cm]?[jt]sx?$/.test(file) ? nodeRoutes(file, text) : [],
   classify(file: string): FileClassification | null {
     const base = file.split("/").pop() ?? file;
     if (/(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/.test(file)) {
       return classified("config", "CONFIGURATION", "CONFIG", "observed", "node-manifest");
     }
     if (/(^|\/)[^/]*\.config\.[cm]?[jt]sx?$/.test(file)) return classified("config", "CONFIGURATION", "CONFIG", "observed", "node-config");
+    if (!/\.(?:[cm]?[jt]sx?|vue|svelte|html|css|scss|sass|less)$/.test(base)) return null;
     if (file.startsWith("public/") && /\.(html|js|mjs)$/.test(base)) return classified("ui", "APPLICATION", "PAGE", "observed", "node-public");
-    if (/\/pages\/api\/|\/app\/api\//.test(file)) return classified("api-server", "APPLICATION", "ROUTE", "observed", "node-api-route");
+    if (/(?:^|\/)(?:pages|app)\/api\//.test(file)) return classified("api-server", "APPLICATION", "ROUTE", "inferred", "node-api-route");
     if (/Api\.[tj]sx?$/.test(base) || file.includes("/services/") || file.includes("/api/")) {
       return classified("api-client", "APPLICATION", "SERVICE", "inferred", "node-path");
     }
@@ -27,9 +31,10 @@ export const nodeAdapter: StackAdapter = {
       const page = file.includes("/pages/") || file.includes("/app/");
       return classified("ui", "APPLICATION", page ? "PAGE" : "COMPONENT", page ? "observed" : "inferred", "node-path");
     }
-    if (/\.(tsx|jsx|vue|html)$/.test(base)) return classified("ui", "APPLICATION", "COMPONENT", "inferred", "node-extension");
+    if (/\.(tsx|jsx|vue|svelte|html)$/.test(base)) return classified("ui", "APPLICATION", "COMPONENT", "inferred", "node-extension");
     if (/^server\.[cm]?js$/.test(base) || base === "server.mjs") return classified("api-server", "APPLICATION", "ROUTE", "inferred", "node-server");
     if (/\.(css|scss|sass|less)$/.test(base)) return classified("style", "APPLICATION", "STYLE", "observed", "node-style");
+    if (/\.[cm]?[jt]s$/.test(base)) return classified("unknown", "APPLICATION", "OTHER", "observed", "node-source");
     return null;
   },
   inspect(scan: ModuleScan): ModuleContribution | null {
@@ -47,11 +52,15 @@ export const nodeAdapter: StackAdapter = {
     const backend = backendName(dependencies);
     if (backend) result.frameworks.push(fact(backend, manifest, "node"));
     if (manager) result.packageManagers.push(fact(manager, manifest, "node"));
-    const ready = true;
+    const ready = toolOnPath(manager ?? "npm");
     const prefix = modulePrefix(scan.path);
-    const patterns = globs(scan.path, [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".css", ".html"]);
+    const patterns = globs(scan.path, [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".css", ".scss", ".html"]);
     for (const script of SCRIPTS) {
       if (typeof scripts[script.script] !== "string") continue;
+      if (!safeManifestScript(scripts, script.script)) {
+        result.capabilities.push({ name: script.title, ready: false, adapter: "node", source: `package.json scripts.${script.script}: mutating command; requires explicit configuration`, confidence: "observed" });
+        continue;
+      }
       const invocation = scriptInvocation(manager ?? "npm", script.script);
       result.commands.push(command({
         id: `${prefix}${script.id}`,
@@ -61,6 +70,7 @@ export const nodeAdapter: StackAdapter = {
         invalidatesOn: patterns,
         ...(scan.path === "." ? {} : { cwd: scan.path }),
         ready,
+        source: `${manifest} scripts.${script.script}`,
       }));
       result.capabilities.push({ name: script.title, ready, adapter: "node", source: `package.json scripts.${script.script}`, confidence: "observed" });
     }
@@ -93,7 +103,7 @@ function packageManager(scan: ModuleScan, pkg: Record<string, unknown>): string 
 function scriptInvocation(manager: string, script: string): { command: string; args: string[] } {
   if (manager === "yarn") return { command: "yarn", args: [script] };
   if (manager === "pnpm") return { command: "pnpm", args: script === "test" ? ["test"] : ["run", script] };
-  if (manager === "bun") return { command: "bun", args: script === "test" ? ["test"] : ["run", script] };
+  if (manager === "bun") return { command: "bun", args: ["run", script] };
   if (script === "test") return { command: "npm", args: ["test"] };
   return { command: "npm", args: ["run", script] };
 }

@@ -17,15 +17,15 @@ export const rustAdapter: StackAdapter = {
     const cargo = scan.read(moduleFile(scan, "Cargo.toml")) ?? "";
     const result = emptyContribution();
     result.languages.push(fact("Rust", scan.exists("Cargo.toml") ? "Cargo.toml" : "rust file", "rust"));
-    result.packageManagers.push(fact("Cargo", "Cargo.toml", "rust"));
-    const ready = toolOnPath("cargo");
+    if (scan.exists("Cargo.toml")) result.packageManagers.push(fact("Cargo", "Cargo.toml", "rust"));
+    const ready = toolOnPath("cargo") && scan.exists("Cargo.lock");
     const prefix = modulePrefix(scan.path);
     const patterns = globs(scan.path, [".rs"]);
     const cwd = scan.path === "." ? {} : { cwd: scan.path };
     if (scan.exists("Cargo.toml")) {
-      result.commands.push(command({ id: `${prefix}cargo-test`, title: "cargo test", command: "cargo", args: ["test"], group: "Test", invalidatesOn: patterns, ...cwd, ready }));
+      result.commands.push(command({ id: `${prefix}cargo-test`, title: "cargo test", command: "cargo", args: ["test", "--offline", "--locked"], group: "Test", invalidatesOn: patterns, ...cwd, ready }));
     }
-    result.capabilities.push({ name: "cargo test", ready: ready && scan.exists("Cargo.toml"), adapter: "rust", source: "cargo test", confidence: "observed" });
+    result.capabilities.push({ name: "cargo test", ready: ready && scan.exists("Cargo.toml"), adapter: "rust", source: scan.exists("Cargo.lock") ? "cargo test --offline --locked; requires cached dependencies" : "Cargo.lock missing; prepare the project before auditing", confidence: "observed" });
     result.capabilities.push({ name: "cargo check", ready, adapter: "rust", source: "available, not run in addition to cargo test", confidence: "inferred" });
     if (scan.exists("clippy.toml") || cargo.includes("clippy")) {
       result.capabilities.push({ name: "cargo clippy", ready: false, adapter: "rust", source: "clippy configured; Project Gate does not install components", confidence: "inferred" });

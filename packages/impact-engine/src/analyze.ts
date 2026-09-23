@@ -1,7 +1,7 @@
 import type { ChangeContract } from "@projectgate/contracts";
 import type { Confidence, ImpactSummary } from "@projectgate/domain";
 import type { LanguageModel } from "@projectgate/model";
-import { isSensitivePath } from "@projectgate/shared";
+import { isSensitivePath, listProjectFiles } from "@projectgate/shared";
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -45,7 +45,7 @@ export function analyzeImpact(input: {
   });
   const edges: ImpactSummary["edges"] = [];
   const surfaces = new Map<string, ImpactSummary["surfaces"][number]>();
-  const present = input.changed.filter((file) => file.status !== "deleted");
+  const present = input.changed.filter((file) => file.status !== "deleted" && classifyFile(file.path).category === "APPLICATION");
   const texts = new Map<string, string>();
 
   for (const file of present) {
@@ -65,6 +65,7 @@ export function analyzeImpact(input: {
     }
     const absolute = path.join(input.root, file.path);
     if (!fs.existsSync(absolute) || isSensitivePath(file.path)) continue;
+    if (!fs.statSync(absolute).isFile() || fs.statSync(absolute).size > 200_000) continue;
     const text = fs.readFileSync(absolute, "utf8");
     texts.set(file.path, text);
     for (const imported of readImports(input.root, file.path, text)) {
@@ -81,15 +82,15 @@ export function analyzeImpact(input: {
       addRoute(surfaces, route, file.path);
       edges.push({
         from: file.path,
-        to: route.path,
+        to: routeName(route),
         relationship: "exposes",
         source: route.source,
         confidence: "observed",
       });
     }
     const classification = classifyFile(file.path);
-    if (classification.adapter === "dart" && (classification.subtype === "SCREEN" || classification.subtype === "PAGE")) {
-      const name = pascal(path.basename(file.path).replace(/\.dart$/, ""));
+    if (classification.surface === "MOBILE_SCREEN" || classification.subtype === "SCREEN") {
+      const name = pascal(path.basename(file.path).replace(/\.[^.]+$/, ""));
       addSurface(surfaces, {
         id: `screen:${name}`,
         relationship: "screen",
@@ -109,6 +110,7 @@ export function analyzeImpact(input: {
     }
   }
   addSymbolEdges(edges, present, texts);
+  addDependentSurfaces(input.root, present, surfaces, edges);
 
   if (input.contract) {
     const related = present.map((file) => file.path);
@@ -135,7 +137,7 @@ export function analyzeImpact(input: {
   }
 
   const unresolvedFiles = changedFiles
-    .filter((file) => file.status !== "deleted" && file.category === "UNKNOWN")
+    .filter((file) => file.category === "UNKNOWN")
     .map((file) => file.path);
   return { changedFiles, surfaces: [...surfaces.values()], edges, unresolvedFiles };
 }
@@ -175,6 +177,7 @@ export async function inferImpactEdges(input: {
 
 function addFileSurface(surfaces: Map<string, ImpactSummary["surfaces"][number]>, file: string): void {
   const classification = classifyFile(file);
+  if (["SERVICE", "REPOSITORY", "MODEL", "ENTITY", "DTO", "REQUEST", "OTHER"].includes(classification.subtype)) return;
   if (classification.role !== "ui" && classification.role !== "api-server" && classification.role !== "api-client" && classification.role !== "migration") return;
   const kind = classification.role === "ui" ? "component" : classification.role === "migration" ? "migration" : "backend";
   addSurface(surfaces, {
@@ -186,14 +189,54 @@ function addFileSurface(surfaces: Map<string, ImpactSummary["surfaces"][number]>
   });
 }
 
+function addDependentSurfaces(root: string, changed: readonly ChangedFile[], surfaces: Map<string, ImpactSummary["surfaces"][number]>, edges: ImpactSummary["edges"]): void {
+  const affected = new Set(changed.map((file) => file.path));
+  if (affected.size === 0) return;
+  let files: string[];
+  try { files = listProjectFiles(root); } catch { return; }
+  const candidates = files.filter((file) => !affected.has(file) && isTextSource(file) && classifyFile(file).category === "APPLICATION");
+  const parsed: { file: string; routes: RouteHit[]; imports: string[] }[] = [];
+  for (const file of candidates) {
+    const absolute = path.join(root, file);
+    try {
+      if (fs.statSync(absolute).size > 200_000) continue;
+      const text = fs.readFileSync(absolute, "utf8");
+      parsed.push({ file, routes: routesInFile(file, text), imports: readImports(root, file, text).flatMap((item) => item.resolvedPath ? [item.resolvedPath] : []) });
+    } catch { /* Unreadable dependencies cannot supply static evidence. */ }
+  }
+  // Follow reverse imports to their public routes. Imports establish a static
+  // dependency; the effect on behavior remains inferred and never runtime proof.
+  for (let depth = 0; depth < 8; depth++) {
+    let added = false;
+    for (const item of parsed) {
+      if (affected.has(item.file)) continue;
+      const dependency = item.imports.find((file) => affected.has(file));
+      if (!dependency) continue;
+      affected.add(item.file);
+      added = true;
+      edges.push({ from: dependency, to: item.file, relationship: "dependent", source: "resolved-import", confidence: "inferred" });
+      for (const route of item.routes) addSurface(surfaces, { id: `route:${routeName(route)}`, files: [dependency, item.file], relationship: "dependent-route", source: "resolved-import", confidence: "inferred" });
+      if (classifyFile(item.file).surface === "MOBILE_SCREEN") {
+        const name = pascal(path.basename(item.file).replace(/\.[^.]+$/, ""));
+        addSurface(surfaces, { id: `screen:${name}`, files: [dependency, item.file], relationship: "dependent-screen", source: "resolved-import", confidence: "inferred" });
+      }
+    }
+    if (!added) break;
+  }
+}
+
 function addRoute(surfaces: Map<string, ImpactSummary["surfaces"][number]>, route: RouteHit, file: string): void {
   addSurface(surfaces, {
-    id: `route:${route.path}`,
+    id: `route:${routeName(route)}`,
     relationship: "runtime-route",
     source: route.source,
     confidence: "observed",
     files: [file],
   });
+}
+
+function routeName(route: RouteHit): string {
+  return route.method ? `${route.method} ${route.path}` : route.path;
 }
 
 function addSurface(

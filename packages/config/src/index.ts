@@ -1,6 +1,7 @@
 export { discoverCommands, discoverRepository } from "./discover.js";
 export type { DiscoveredCommand, Discovery, DiscoveryModule } from "./discover.js";
-export { classifyProjectPath } from "./stacks/index.js";
+export { classifyProjectPath, routesInFile } from "./stacks/index.js";
+export type { RouteHit } from "./stacks/surfaces.js";
 export type { FileClassification } from "./stacks/types.js";
 export { initProject } from "./init.js";
 export type { InitResult } from "./init.js";

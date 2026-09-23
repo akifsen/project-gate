@@ -25,7 +25,7 @@ function run(command, args, options = {}) {
     cwd,
     encoding: "utf8",
     windowsHide: true,
-    env: process.env,
+    env: options.env ?? process.env,
   });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   if (result.error) throw result.error;
@@ -81,7 +81,7 @@ function installedBin(prefix) {
   return path.join(prefix, "node_modules", "@akifsen", "project-gate", "bin", "projectgate.js");
 }
 
-function gate(prefix, args, cwd) {
+function gate(prefix, args, cwd, expectedExitCodes = [0]) {
   const result = spawnSync(process.execPath, [installedBin(prefix), ...args], {
     cwd,
     encoding: "utf8",
@@ -90,7 +90,7 @@ function gate(prefix, args, cwd) {
   });
   const stderr = result.stderr ?? "";
   if (stderr.includes("ExperimentalWarning")) throw new Error(stderr);
-  if (result.status !== 0) throw new Error(`projectgate ${args.join(" ")} failed (${result.status})\n${result.stdout}\n${stderr}`);
+  if (!expectedExitCodes.includes(result.status)) throw new Error(`projectgate ${args.join(" ")} failed (${result.status})\n${result.stdout}\n${stderr}`);
   return result.stdout ?? "";
 }
 
@@ -119,6 +119,52 @@ function writeFixture(directory) {
   git(directory, ["init", "-b", "main"]);
   git(directory, ["add", "README.md"]);
   git(directory, ["commit", "-m", "base"]);
+}
+
+function writeGitBase(directory) {
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(directory, "README.md"), "package smoke fixture\n");
+  git(directory, ["init", "-b", "main"]);
+  git(directory, ["add", "README.md"]);
+  git(directory, ["commit", "-m", "base"]);
+}
+
+function writeFiles(directory, files) {
+  for (const [relative, contents] of Object.entries(files)) {
+    const absolute = path.join(directory, relative);
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, contents);
+  }
+}
+
+function cleanupTempDirectory(directory, prefix) {
+  const resolvedDirectory = path.resolve(directory);
+  const resolvedOsTemp = path.resolve(os.tmpdir());
+  if (path.dirname(resolvedDirectory) !== resolvedOsTemp || !path.basename(resolvedDirectory).startsWith(prefix)) {
+    throw new Error(`Refusing to remove unexpected package smoke temp path: ${resolvedDirectory}`);
+  }
+  fs.rmSync(resolvedDirectory, { recursive: true, force: true });
+}
+
+function inspectFixture(app, directory, name, files, expected, expectedModules) {
+  writeGitBase(directory);
+  writeFiles(directory, files);
+  const init = gate(app, ["init"], directory);
+  if (init.includes("contract.example.yml") || init.includes("Copy-Item")) throw new Error(init);
+  if (fs.existsSync(path.join(directory, ".projectgate", "contract.yml"))) throw new Error("init created an active contract");
+  const inspected = gate(app, ["inspect", "--verbose"], directory);
+  for (const text of expected) {
+    if (!inspected.includes(text)) throw new Error(`Expected inspect output to include ${JSON.stringify(text)}:\n${inspected}`);
+  }
+  const modulesSection = inspected.split("\nModules\n")[1]?.split("\n\nCommands")[0] ?? "";
+  const moduleCount = modulesSection.split(/\r?\n/).filter((line) => line.trim().length > 0 && !line.startsWith("  ")).length;
+  if (moduleCount !== expectedModules) throw new Error(`${name} fixture expected ${expectedModules} modules, found ${moduleCount}:\n${inspected}`);
+  const classifiedSection = inspected.split("\nClassified files\n")[1]?.split("\n\nNext:")[0] ?? "";
+  const classifiedCount = classifiedSection.split(/\r?\n/).filter((line) => /^ {2}(?:added|modified|deleted|renamed) /.test(line)).length;
+  const applicationCount = (classifiedSection.match(/APPLICATION\//g) ?? []).length;
+  const testCount = (classifiedSection.match(/TEST\/TEST/g) ?? []).length;
+  console.log(`fixture ${name}: modules=${moduleCount} application_files=${applicationCount} tests=${testCount} classified_files=${classifiedCount}`);
+  return inspected;
 }
 
 async function mcpHandshake(prefix) {
@@ -166,7 +212,8 @@ function registryStatus() {
   return result.stdout.trim();
 }
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), "projectgate-package-test-"));
+const tempPrefix = "projectgate-package-test-";
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
 let tarball = "";
 try {
   const dry = pack(true);
@@ -204,21 +251,51 @@ try {
   if (init.includes("contract.example.yml") || init.includes("Copy-Item")) throw new Error(init);
   if (fs.existsSync(path.join(fixture, ".projectgate", "contract.yml"))) throw new Error("init created an active contract");
   gate(app, ["doctor"], fixture);
-  const inspected = gate(app, ["inspect"], fixture);
+  const inspected = gate(app, ["inspect", "--verbose"], fixture);
   if (!inspected.includes("React + Vite")) throw new Error(inspected);
   gate(app, ["contract", "--task", "Add a responsive user profile card with loading and error states."], fixture);
-  const audit = gate(app, ["audit"], fixture);
+  const audit = gate(app, ["audit"], fixture, [0, 1, 2]);
   if (audit.includes("No checks ran.")) throw new Error(audit);
   if (!audit.includes("PASS") && !audit.includes("BLOCKED") && !audit.includes("INCOMPLETE_EVIDENCE")) throw new Error(audit);
   await mcpHandshake(app);
 
-  // --force replaces the development `npm link` shim. The finally block restores it.
-  run("npm", ["install", "-g", "--force", tarball]);
-  const globalHelp = run("projectgate", ["--help"], { cwd: temp });
+  const flutterFixture = path.join(temp, "flutter-fixture");
+  inspectFixture(app, flutterFixture, "Flutter", {
+    "pubspec.yaml": "name: profile_app\ndescription: Package smoke fixture\nenvironment:\n  sdk: '>=3.3.0 <4.0.0'\ndependencies:\n  flutter:\n    sdk: flutter\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\nflutter:\n  uses-material-design: true\n",
+    "lib/main.dart": "import 'package:flutter/material.dart';\nimport 'features/profile/profile_screen.dart';\n\nvoid main() => runApp(const ProfileApp());\n\nclass ProfileApp extends StatelessWidget {\n  const ProfileApp({super.key});\n  @override\n  Widget build(BuildContext context) => const MaterialApp(home: ProfileScreen());\n}\n",
+    "lib/features/profile/profile_screen.dart": "import 'package:flutter/material.dart';\n\nclass ProfileScreen extends StatelessWidget {\n  const ProfileScreen({super.key});\n  @override\n  Widget build(BuildContext context) => const Scaffold(body: Text('Profile'));\n}\n",
+    "test/features/profile/profile_screen_test.dart": "import 'package:flutter/material.dart';\nimport 'package:flutter_test/flutter_test.dart';\nimport 'package:profile_app/features/profile/profile_screen.dart';\n\nvoid main() { testWidgets('shows profile', (tester) async { await tester.pumpWidget(const MaterialApp(home: ProfileScreen())); }); }\n",
+  }, ["Flutter", "Dart", "Flutter Pub", "lib/features/profile/profile_screen.dart", "APPLICATION/SCREEN adapter=dart", "test/features/profile/profile_screen_test.dart", "TEST/TEST adapter=dart"], 1);
+
+  const springFiles = {
+    "pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd\"><modelVersion>4.0.0</modelVersion><groupId>com.example</groupId><artifactId>profile-api</artifactId><version>1.0.0</version><parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>3.3.0</version></parent><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency></dependencies></project>\n",
+    "src/main/java/com/example/profile/UserController.java": "package com.example.profile;\n\nimport org.springframework.web.bind.annotation.GetMapping;\nimport org.springframework.web.bind.annotation.RestController;\n\n@RestController\npublic class UserController {\n  @GetMapping(\"/api/profile\")\n  public String profile() { return \"profile\"; }\n}\n",
+    "src/main/java/com/example/profile/UserService.java": "package com.example.profile;\n\nimport org.springframework.stereotype.Service;\n\n@Service\npublic class UserService { public String profile() { return \"profile\"; } }\n",
+    "src/test/java/com/example/profile/UserControllerTest.java": "package com.example.profile;\n\nimport org.junit.jupiter.api.Test;\nclass UserControllerTest { @Test void loadsProfile() {} }\n",
+  };
+  const springFixture = path.join(temp, "spring-fixture");
+  inspectFixture(app, springFixture, "Spring", springFiles, ["Spring Boot", "Java", "Maven", "src/main/java/com/example/profile/UserController.java", "APPLICATION/CONTROLLER adapter=java", "src/test/java/com/example/profile/UserControllerTest.java", "TEST/TEST adapter=java"], 1);
+
+  const mixedFixture = path.join(temp, "mixed-fixture");
+  inspectFixture(app, mixedFixture, "mixed", {
+    "apps/mobile/pubspec.yaml": "name: mixed_mobile\ndependencies:\n  flutter:\n    sdk: flutter\n",
+    "apps/mobile/lib/features/profile/profile_screen.dart": "import 'package:flutter/material.dart';\nclass ProfileScreen extends StatelessWidget { const ProfileScreen({super.key}); @override Widget build(BuildContext context) => const Text('Profile'); }\n",
+    "services/api/pom.xml": springFiles["pom.xml"],
+    "services/api/src/main/java/com/example/profile/UserController.java": springFiles["src/main/java/com/example/profile/UserController.java"],
+  }, ["apps/mobile", "Flutter", "services/api", "Spring Boot", "apps/mobile/lib/features/profile/profile_screen.dart", "APPLICATION/SCREEN adapter=dart", "services/api/src/main/java/com/example/profile/UserController.java", "APPLICATION/CONTROLLER adapter=java"], 2);
+
+  const globalPrefix = path.join(temp, "isolated-global");
+  run("npm", ["install", "--global", "--prefix", globalPrefix, tarball]);
+  const globalBinDir = process.platform === "win32" ? globalPrefix : path.join(globalPrefix, "bin");
+  const globalShim = path.join(globalBinDir, process.platform === "win32" ? "projectgate.cmd" : "projectgate");
+  if (!fs.existsSync(globalShim)) throw new Error(`npm did not create isolated global shim ${globalShim}`);
+  const pathVariable = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  const isolatedEnv = { ...process.env, [pathVariable]: `${globalBinDir}${path.delimiter}${process.env[pathVariable] ?? ""}` };
+  const globalHelp = run("projectgate", ["--help"], { cwd: temp, env: isolatedEnv });
   if (!globalHelp.stdout.includes("audit")) throw new Error(globalHelp.output);
-  const globalVersion = run("projectgate", ["--version"], { cwd: temp });
+  const globalVersion = run("projectgate", ["--version"], { cwd: temp, env: isolatedEnv });
   if (!globalVersion.stdout.includes(expectedVersion)) throw new Error(globalVersion.output);
-  const globalDoctor = run("projectgate", ["doctor"], { cwd: temp });
+  const globalDoctor = run("projectgate", ["doctor"], { cwd: temp, env: isolatedEnv });
   if (!globalDoctor.stdout.includes("healthy")) throw new Error(globalDoctor.output);
   if (globalDoctor.stderr.includes("ExperimentalWarning")) throw new Error(globalDoctor.stderr);
 
@@ -232,18 +309,6 @@ try {
   }
   console.log("Package smoke tests passed");
 } finally {
-  const uninstall = spawnSync(process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm", process.platform === "win32" ? ["/d", "/s", "/c", "npm uninstall -g @akifsen/project-gate"] : ["uninstall", "-g", "@akifsen/project-gate"], {
-    cwd: root,
-    encoding: "utf8",
-    windowsHide: true,
-  });
-  if (uninstall.status !== 0) console.error(uninstall.stdout, uninstall.stderr);
-  const relink = spawnSync(process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm", process.platform === "win32" ? ["/d", "/s", "/c", "npm link"] : ["link"], {
-    cwd: root,
-    encoding: "utf8",
-    windowsHide: true,
-  });
-  if (relink.status !== 0) console.error(relink.stdout, relink.stderr);
-  fs.rmSync(temp, { recursive: true, force: true });
+  cleanupTempDirectory(temp, tempPrefix);
   if (tarball && fs.existsSync(tarball)) fs.rmSync(tarball, { force: true });
 }

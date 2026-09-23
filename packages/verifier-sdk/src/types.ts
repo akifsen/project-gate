@@ -80,6 +80,7 @@ export interface BrowserPool {
 }
 
 export interface ExecutionContext {
+  signal?: AbortSignal;
   root: string;
   runDir: string;
   config: ProjectConfig;
@@ -155,7 +156,7 @@ export function viewportLabel(width: number): string {
 
 export function sourcePatterns(patterns: readonly string[]): string[] {
   if (patterns.length > 0) return [...patterns];
-  return ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.php", "**/*.css", "**/*.html", "**/*.vue"];
+  return ["**/*"];
 }
 
 export function unavailable(reason: string): VerificationResult {

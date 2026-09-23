@@ -1,8 +1,10 @@
 import { emptyContribution, fact, type FileClassification, type ModuleContribution, type ModuleScan, type StackAdapter } from "./types.js";
-import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf } from "./tools.js";
+import { laravelRoutes } from "./surfaces.js";
+import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf, toolOnPath, readOnlyScript } from "./tools.js";
 
 export const phpAdapter: StackAdapter = {
   id: "php",
+  routes: (file, text) => file.endsWith(".php") ? laravelRoutes(text) : [],
   classify(file: string): FileClassification | null {
     const base = file.split("/").pop() ?? file;
     if (/(^|\/)(composer\.json|composer\.lock|phpunit\.xml|phpunit\.xml\.dist|pest\.php)$/.test(file)) {
@@ -10,7 +12,7 @@ export const phpAdapter: StackAdapter = {
     }
     if (/migration/i.test(file) && base.endsWith(".php")) return hit("migration", "APPLICATION", "MIGRATION", "observed", "php-migration");
     if (/(^|\/)routes\/.+\.php$/.test(file) || /Controller\.php$/.test(base)) return hit("api-server", "APPLICATION", "CONTROLLER", "observed", "php-route");
-    if (/\/(Requests|Models|Policies|Jobs|Events|Listeners|Middleware|Console)\//.test(file)) return hit("api-server", "APPLICATION", phpSubtype(file), "observed", "laravel-convention");
+    if (base.endsWith(".php") && /\/(Requests|Models|Policies|Jobs|Events|Listeners|Middleware|Console)\//.test(file)) return hit("api-server", "APPLICATION", phpSubtype(file), "inferred", "laravel-convention");
     if (/(Service|Repository|Policy|Request)\.php$/.test(base)) return hit("api-server", "APPLICATION", phpSubtype(base), "observed", "laravel-convention");
     if (base.endsWith(".blade.php")) return hit("ui", "APPLICATION", "PAGE", "inferred", "php-blade");
     if (base.endsWith(".php")) return hit("unknown", "APPLICATION", "OTHER", "inferred", "php-source");
@@ -32,9 +34,9 @@ export const phpAdapter: StackAdapter = {
     const prefix = modulePrefix(scan.path);
     const patterns = globs(scan.path, [".php"]);
     const cwd = scan.path === "." ? {} : { cwd: scan.path };
-    const phpReady = true;
-    const composerReady = true;
-    if (typeof scripts.test === "string") {
+    const phpReady = toolOnPath("php");
+    const composerReady = phpReady && toolOnPath("composer");
+    if (typeof scripts.test === "string" && readOnlyScript(scripts.test)) {
       result.commands.push(command({ id: `${prefix}composer-test`, title: "Composer test", command: "composer", args: ["test"], group: "Test", invalidatesOn: patterns, ...cwd, ready: composerReady }));
     } else if (scan.exists("artisan") && (scan.exists("phpunit.xml") || scan.exists("phpunit.xml.dist") || scan.exists("tests") || scan.files.some((file) => file.includes("/tests/")))) {
       result.commands.push(command({ id: `${prefix}artisan-test`, title: "Artisan test", command: "php", args: ["artisan", "test"], group: "Test", invalidatesOn: patterns, ...cwd, ready: phpReady }));
@@ -55,7 +57,8 @@ export const phpAdapter: StackAdapter = {
       }
     }
     if (scan.exists("app")) result.sourceRoots.push(scan.path === "." ? "app" : `${scan.path}/app`);
-    if (scan.files.some((file) => file.includes("/tests/"))) result.testRoots.push(scan.path === "." ? "tests" : `${scan.path}/tests`);
+    if (scan.exists("tests")) result.testRoots.push(moduleFile(scan, "tests"));
+    for (const item of result.commands) result.capabilities.push({ name: item.title, ready: item.ready, source: item.command === "composer" ? `${composerPath} scripts.test` : item.command, adapter: "php", confidence: "observed" });
     return result;
   },
 };

@@ -68,6 +68,7 @@ export function loadProject(root: string): ProjectConfig {
       };
       if (command.criterion) mapped.criterionId = command.criterion;
       if (command.cwd) mapped.cwd = command.cwd;
+      if (command.env) mapped.env = command.env;
       return mapped;
     })),
     discoverBaseline: verification.discover_baseline,
@@ -112,6 +113,7 @@ function mergeCommands(root: string, discoverBaseline: boolean, configured: Shel
         group: command.group,
       };
       if (command.cwd) mapped.cwd = command.cwd;
+      if (command.env) mapped.env = command.env;
       return mapped;
     });
   return [...configured, ...discovered];

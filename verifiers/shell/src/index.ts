@@ -7,6 +7,7 @@ interface ShellInput {
   command: string;
   args: string[];
   cwd?: string;
+  env?: Record<string, string>;
 }
 
 export class ShellVerifier implements Verifier {
@@ -37,7 +38,7 @@ export class ShellVerifier implements Verifier {
         dependencyPatterns: sourcePatterns(command.invalidatesOn),
         reproduction: [`${command.command} ${command.args.join(" ")}`.trim()],
         suspects: [],
-        input: { command: command.command, args: command.args, ...(command.cwd ? { cwd: command.cwd } : {}) } satisfies ShellInput,
+        input: { command: command.command, args: command.args, ...(command.cwd ? { cwd: command.cwd } : {}), ...(command.env ? { env: command.env } : {}) } satisfies ShellInput,
       };
       if (command.criterionId) {
         check.criterionId = command.criterionId;
@@ -54,6 +55,8 @@ export class ShellVerifier implements Verifier {
       args: input.args,
       cwd: input.cwd ? path.resolve(context.root, input.cwd) : context.root,
       timeoutMs: context.timeouts.commandMs,
+      ...(input.env ? { env: input.env } : {}),
+      ...(context.signal ? { signal: context.signal } : {}),
     });
     const stdout = redactText(result.stdout).text;
     const stderr = redactText(result.stderr).text;
@@ -62,13 +65,14 @@ export class ShellVerifier implements Verifier {
       evidenceClass: "EXECUTABLE",
       summary: result.spawnError
         ? `Could not start ${input.command}: ${result.spawnError}`
-        : `${input.command} exited ${result.exitCode ?? "null"} in ${result.durationMs}ms${result.timedOut ? " (timed out)" : ""}.`,
+        : `${input.command} exited ${result.exitCode ?? "null"} in ${result.durationMs}ms${result.timedOut ? " (timed out)" : result.cancelled ? " (cancelled)" : ""}.`,
       artifacts: [
         { filename: "stdout.log", mediaType: "text/plain", body: stdout },
         { filename: "stderr.log", mediaType: "text/plain", body: stderr },
       ],
     };
-    const passed = result.exitCode === 0 && !result.timedOut && !result.spawnError;
+    if (result.cancelled) return { status: "UNKNOWN", evidence: [evidence], findings: [], error: "Command execution was cancelled; no verification result was obtained." };
+    const passed = result.exitCode === 0 && !result.timedOut && !result.cancelled && !result.spawnError;
     if (passed) return { status: "PASSED", evidence: [evidence], findings: [] };
     return {
       status: "FAILED",

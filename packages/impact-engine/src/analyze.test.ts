@@ -29,19 +29,19 @@ describe("impact classification", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "pg-impact-"));
     write(root, "src/components/Widget.tsx", "export function Widget() { return null; }\n");
     write(root, "routes/web.php", "Route::get('/profile', [ProfileController::class, 'show']);\n");
-    write(root, "src/custom/thing.ts", "export const value = 1;\n");
+    write(root, "src/custom/thing.zig", "const value = 1;\n");
     const impact = analyzeImpact({
       root,
       changed: [
         { path: "src/components/Widget.tsx", status: "modified" },
         { path: "routes/web.php", status: "modified" },
-        { path: "src/custom/thing.ts", status: "modified" },
+        { path: "src/custom/thing.zig", status: "modified" },
       ],
     });
-    expect(impact.surfaces.some((surface) => surface.id === "route:/profile" && surface.confidence === "observed")).toBe(true);
+    expect(impact.surfaces.some((surface) => surface.id === "route:GET /profile" && surface.confidence === "observed")).toBe(true);
     expect(impact.surfaces.some((surface) => surface.id === "component:src/components/Widget.tsx")).toBe(true);
     expect(impact.surfaces.some((surface) => surface.id === "backend:routes/web.php")).toBe(true);
-    expect(impact.unresolvedFiles).toEqual(["src/custom/thing.ts"]);
+    expect(impact.unresolvedFiles).toEqual(["src/custom/thing.zig"]);
   });
 });
 

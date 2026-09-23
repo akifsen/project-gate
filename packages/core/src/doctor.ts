@@ -43,7 +43,7 @@ export async function doctor(root: string): Promise<DoctorReport> {
       checks.push({
         status: available ? "ok" : "warn",
         label: trimLabel(`${prefix}${command.title}`),
-        detail: available ? `${command.command} ${command.args.join(" ")}`.trim() : `${command.command} is not available`,
+        detail: available ? `${command.command} ${command.args.join(" ")}`.trim() : `${command.command} is not ready${command.source ? ` (${command.source})` : ""}; check tooling and project setup`,
       });
     }
     for (const capability of module.capabilities) {

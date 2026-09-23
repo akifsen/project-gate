@@ -10,6 +10,12 @@ Discovery is now a set of technology adapters instead of a Node/PHP-only scan. A
 - Spring mappings, Laravel routes, and the existing Node route extractors become product surfaces. A class is not a surface by itself
 - Clearly separated task text becomes multiple user-supplied criteria. One sentence stays one criterion. No model provider is required
 - Module commands run only when the change overlaps that module. Audit does not install dependencies
+- Discovery retains detection provenance and normalized module routes/surfaces for both CLI and MCP; manifest changes invalidate baseline evidence
+- Generic Node source and unsupported/deleted files stay visible; Project Gate runtime files cannot become product surfaces
+- Static reverse imports connect changed Java services and Dart self-package imports to dependent routes/screens, explicitly as inferred impact
+- Tool readiness is checked, source-writing script modes are excluded from automatic discovery, and offline/no-restore baseline modes avoid dependency setup
+- Shell deadlines terminate process trees; programmatic cancellation produces unknown evidence instead of a product failure
+- Repeated init preserves verification comments and the baseline opt-out; package smoke installs are isolated from the user's global npm installation
 
 ## 0.1.0
 

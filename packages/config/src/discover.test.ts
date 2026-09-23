@@ -26,6 +26,6 @@ describe("repository discovery", () => {
     fs.mkdirSync(path.join(root, "tests"));
     const discovery = discoverRepository(root);
     expect(discovery.backend).toBe("Laravel");
-    expect(discovery.commands.map((command) => command.id)).toEqual(["artisan-test"]);
+    expect(discovery.modules.find((module) => module.path === ".")?.commands.map((command) => command.id)).toEqual(["artisan-test"]);
   });
 });

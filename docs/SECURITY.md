@@ -24,6 +24,12 @@ Redaction is best-effort. It is not a guarantee that a novel secret shape will b
 
 The auditor starts the configured command and can execute the shell checks listed in `verification.yml`. Those commands are chosen by the repository. Project Gate does not add a general remote shell. The application process is killed when the run finishes.
 
+Automatic discovery also recognizes ecosystem baseline commands and existing manifest scripts. Use it only in a repository you trust: scripts, wrappers, plugins, and test bodies are executable code. The known-mutator filter excludes formatter write/fix modes, setup commands, and detected indirect mutation scripts; it is not a sandbox or a proof that arbitrary scripts are read-only. Set `discover_baseline: false` and configure reviewed commands when needed.
+
+Flutter baselines use `--no-pub`; Maven and Gradle lifecycle commands use offline mode; .NET uses `--no-restore`; Cargo uses offline/locked mode and requires a lockfile. Go uses cached or vendored modules with downloads disabled. Missing dependencies require project setup outside audit. Maven/Gradle wrapper distributions must already be provisioned: their bootstrap scripts and custom build plugins can have behavior outside the lifecycle offline flags. Pure Dart tests require explicit configuration because `dart test` has no equivalent of Flutter's `--no-pub` option.
+
+Shell output is bounded. Commands have configurable deadlines, process-tree termination, and optional programmatic `AbortSignal` cancellation. A cancelled check is unknown, not proof of a product defect. This development task used an explicitly authorized external JEV review; JEV is not added as a runtime dependency of Project Gate.
+
 ## Reports
 
 Release packets can contain screenshots and response excerpts. They live under `.projectgate/runtime/`, which is gitignored. Treat that directory as sensitive if the app under test shows private data.

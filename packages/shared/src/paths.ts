@@ -65,6 +65,9 @@ const SKIP_DIRS = new Set([
   ".idea",
   ".cursor",
   "obj",
+  ".venv",
+  "venv",
+  "__pycache__",
 ]);
 
 export function listProjectFiles(root: string): string[] {

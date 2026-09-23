@@ -5,16 +5,7 @@ import path from "node:path";
 import { discoverProfile, type DiscoveredModule } from "./stacks/index.js";
 import type { StackCapability, StackCommand } from "./stacks/types.js";
 
-export interface DiscoveredCommand {
-  id: string;
-  title: string;
-  command: string;
-  args: string[];
-  group: string;
-  invalidatesOn: string[];
-  cwd?: string;
-  ready: boolean;
-}
+export type DiscoveredCommand = StackCommand;
 
 export interface DiscoveryModule {
   path: string;
@@ -26,6 +17,10 @@ export interface DiscoveryModule {
   capabilities: StackCapability[];
   commands: DiscoveredCommand[];
   adapterIds: string[];
+  detections: DiscoveredModule["detections"];
+  manifests: DiscoveredModule["manifests"];
+  routes: DiscoveredModule["routes"];
+  productSurfaces: DiscoveredModule["productSurfaces"];
 }
 
 export interface Discovery {
@@ -58,7 +53,7 @@ export function discoverRepository(root: string): Discovery {
     packageManager: join(packageManagers),
     frontend,
     backend,
-    browserApp: frameworks.some(isWeb) || files.some((file) => file === "index.html" || file.startsWith("public/") || file.includes("/pages/") || (file.startsWith("app/") && /\.(tsx|jsx|vue|html)$/.test(file))),
+    browserApp: frameworks.some(isWeb) || files.some((file) => /(?:^|\/)(?:index\.html|public\/.*\.html)$/.test(file) && !/(?:^|\/)web\//.test(file)),
     git: fs.existsSync(path.join(root, ".git")),
     defaultBranch: defaultBranch(root),
     testFileCount: files.filter(isTestFile).length,
@@ -85,20 +80,15 @@ function toModule(module: DiscoveredModule): DiscoveryModule {
     capabilities: module.capabilities,
     commands: module.commands.map(toCommand),
     adapterIds: module.adapterIds,
+    detections: module.detections,
+    manifests: module.manifests,
+    routes: module.routes,
+    productSurfaces: module.productSurfaces,
   };
 }
 
 function toCommand(command: StackCommand): DiscoveredCommand {
-  return {
-    id: command.id,
-    title: command.title,
-    command: command.command,
-    args: command.args,
-    group: command.group,
-    invalidatesOn: command.invalidatesOn,
-    ready: command.ready,
-    ...(command.cwd ? { cwd: command.cwd } : {}),
-  };
+  return { ...command };
 }
 
 function isWeb(name: string): boolean {

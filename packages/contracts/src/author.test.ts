@@ -30,4 +30,15 @@ describe("task contracts", () => {
     expect(numbered.acceptance[1]?.origin).toBe("FILE_SUPPLIED");
     expect(numbered.acceptance[1]?.evidence).toBe("RUNTIME");
   });
+
+  it("splits plain newline requirements while keeping wrapped prose together", () => {
+    const separate = buildTaskContract("Keep the toolbar working\nKeep controls accessible", "USER_SUPPLIED");
+    expect(separate.acceptance.map((item) => item.description)).toEqual([
+      "Keep the toolbar working",
+      "Keep controls accessible",
+    ]);
+
+    const wrapped = buildTaskContract("Keep the toolbar usable on\nmobile devices.", "USER_SUPPLIED");
+    expect(wrapped.acceptance.map((item) => item.description)).toEqual(["Keep the toolbar usable on mobile devices."]);
+  });
 });

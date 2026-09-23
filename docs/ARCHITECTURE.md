@@ -18,6 +18,14 @@ packages/cli  packages/mcp  integrations/agents
 
 `packages/domain` holds verdict rules, evidence classes, and release-packet records. `packages/shared` holds the product name, exit codes, redaction, hashing, and process execution.
 
+## Technology discovery
+
+`packages/config/src/stacks` registers eight adapters: Node, PHP, Dart, Java/JVM, Python, .NET, Go, and Rust. Each adapter contributes manifest facts, classification, commands, capabilities, and static route extraction. A repository may have several adapters in one module and several independently owned modules. Core and MCP consume the same `discoverRepository` result; they do not implement a second discovery pipeline.
+
+The legacy language/framework string arrays remain available. Additive `detections`, `manifests`, `routes`, and `productSurfaces` retain adapter, source, and confidence. Command readiness means launch prerequisites were found, not that tests pass or dependencies are ready. Missing SDKs remain visible in module commands but are excluded from automatically executable baselines.
+
+Command invalidation includes adapter source patterns and module manifest files. Explicit configuration wins over discovery. Naming-based screens and reverse-import effects remain inferred; a parsed route is static evidence, never proof of runtime behavior. Laravel impact route identifiers now include HTTP method to distinguish endpoints sharing a URI.
+
 ## Run lifecycle
 
 1. Load `.projectgate/*.yml` and the change contract.
