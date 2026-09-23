@@ -33,7 +33,7 @@
 
 ### Validation
 
-- A prior Windows local release check recorded typecheck, lint, 25 test files / 74 tests, and package smoke; this is historical candidate evidence, not current release readiness
+- Hosted Ubuntu and Windows / Node 22 release checks passed for commit `9c3b6ce`; the release record links the immutable run evidence and current local closure results
 - Validation-only Windows and Ubuntu CI lanes run Node 22, clean installation, browser setup, and the full release check
 - Real Flutter and Spring repositories exercised discovery, impact, and successful SDK test execution; a real Laravel/React repository exposed the Yarn dispatch regression. See [the dogfood report](docs/REAL_WORLD_VALIDATION.md) and [release record](docs/RELEASE_0_2_0.md) for exact outcomes and remaining gates
 

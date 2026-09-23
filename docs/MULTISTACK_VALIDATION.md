@@ -46,7 +46,7 @@ Browser runtime checks require an explicitly configured application and UI state
 
 ## Validation and results
 
-The previous Windows local candidate check recorded typecheck, lint, **25 test files / 74 tests**, build, and package smoke. The package smoke included `npm pack --dry-run`, real `npm pack`, tarball-content checks, a clean local install, isolated global-prefix install, CLI help/version/doctor/inspect/audit, and an MCP initialize handshake. Treat that as historical candidate evidence; current release readiness is tracked in [the 0.2.0 release record](RELEASE_0_2_0.md). No Ubuntu or remote CI pass is claimed here.
+The earlier Windows candidate check covered typecheck, lint, tests, build, and package smoke. The package smoke included `npm pack --dry-run`, real `npm pack`, tarball-content checks, a clean local install, isolated global-prefix install, CLI help/version/doctor/inspect/audit, and an MCP initialize handshake. Subsequent hosted Ubuntu and Windows / Node 22 checks passed for `9c3b6ce`; see [the 0.2.0 release record](RELEASE_0_2_0.md) for immutable CI evidence and the final closure results.
 
 The test fixtures cover React/Vite, Next, Laravel, Flutter, Maven/Spring, Gradle/Kotlin/Spring, FastAPI, Django, ASP.NET, Go, Rust, Android, unknown files, internal files, and mixed modules. Regressions cover provenance, unavailable tools, mutating script modes, Go vendoring, Cargo prerequisites, repeated init, reverse imports, deadlines, cancellation, contract splitting, and selective re-verification. Browser avatar lifecycle coverage remains passing.
 

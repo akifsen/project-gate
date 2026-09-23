@@ -111,7 +111,7 @@ Tool names and arguments are in `docs/MCP.md`. This repository does not claim a 
 
 ## Versions
 
-`0.1.0` is the first public release. Version numbers are changed by hand in `release/package.json` before a release. There is no automated publisher.
+`0.1.0` was the first public release; this checkout prepares `0.2.0`. The public `release/package.json` is the single release-version authority used by CLI and MCP. Publication is manual; see the [release record](docs/RELEASE_0_2_0.md) for validation evidence.
 
 - **Patch:** bug fixes that do not change the CLI, verdicts, or contract schema
 - **Minor:** backward-compatible commands, verifiers, or contract fields
@@ -159,7 +159,7 @@ npm run release:check
 
 `npm run check` typechecks, lints, tests, and builds. `npm run release:check` also packs `release/` and installs that tarball outside the workspace. It does not publish.
 
-Publish only after the check passes. `release:check` runs from the repository root. `npm publish` runs from `release/`:
+Publish only after the local release check and both hosted CI lanes pass, and the [release record](docs/RELEASE_0_2_0.md) confirms readiness. `release:check` runs from the repository root. `npm publish` runs from `release/`:
 
 ```powershell
 npm login

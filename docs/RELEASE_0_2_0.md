@@ -21,11 +21,16 @@ The adapter registry and normalized profile remain the extension boundary; no fr
 | Ubuntu 24.04.3 WSL, Linux Node 22.23.2 | Passed: clean `npm ci`, typecheck, lint, 27 files / 82 tests, build, tarball smoke |
 | Linux Node provenance | Official Linux tarball checked against published SHA256 sums |
 | Chromium setup | Windows browser checks passed; Linux required Chromium plus OS dependencies, matching the workflow |
-| GitHub-hosted `windows-latest` / `ubuntu-latest` jobs | Not run in this task; no pushed commit or hosted run is claimed |
+| GitHub-hosted Ubuntu / Node 22 | PASS: `release-check`, commit `9c3b6ce9e300eea56faa5682910ac42d5c987c52` |
+| GitHub-hosted Windows / Node 22 | PASS: same workflow and commit |
+
+Hosted evidence was read directly from the GitHub Actions API during final closure: [workflow run](https://github.com/akifsen/project-gate/actions/runs/35841504166), [Ubuntu job](https://github.com/akifsen/project-gate/actions/runs/35841504166/job/107117405165), and [Windows job](https://github.com/akifsen/project-gate/actions/runs/35841504166/job/107117405314). Both jobs completed successfully; remote `main` and local HEAD matched that exact commit when checked. The links identify historical evidence for this commit, not a promise about future commits.
+
+The successful jobs warned that checkout/setup-node v4 target deprecated Node 20. Official stable [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) and [setup-node v7.0.0](https://github.com/actions/setup-node/releases/tag/v7.0.0) were confirmed, including their Node 24 action runtimes. Those action references are updated locally; the tested application Node matrix remains 22. This maintenance-only workflow edit has not been pushed or run on hosted CI in this task. The PASS evidence above belongs to the original v4 workflow, and the next normal push must validate the refreshed action references. It is not a new application release blocker.
 
 Initial Linux runs correctly failed without Chromium/system libraries. A 150 ms process-test startup assumption also failed under load; the test now gives Node 1 second to start while retaining the timeout, captured-output, and under-3-second termination assertions. The final complete runs above include all code fixes and no skipped failing tests.
 
-Local logs (gitignored): `.projectgate/runtime/release-020-npm-ci.log`, `release-020-windows-complete.log`, and `ubuntu-release-check-aVkWMd` in the same directory. These local executions validate the workflow command paths on both operating systems; they are not hosted CI attestations.
+Earlier local logs (gitignored): `.projectgate/runtime/release-020-npm-ci.log`, `release-020-windows-complete.log`, and `ubuntu-release-check-aVkWMd` in the same directory. Final closure reran clean `npm ci` and canonical `npm run release:check` successfully on Windows: typecheck, lint, **27 test files / 82 tests**, build, package-content checks, clean install/repack, CLI and MCP. Final logs are `.projectgate/runtime/closure-npm-ci.log` and `closure-release-check.log`. These local logs supplement the separately verified hosted results above. No product source, manifest, lockfile, or release-script changes were needed for closure.
 
 ## Real repository validation
 
@@ -47,12 +52,12 @@ Retained artifact: `release/akifsen-project-gate-0.2.0.tgz`.
 |---|---|
 | Name / version | `@akifsen/project-gate` / `0.2.0` |
 | License / engine | MIT / Node `>=22.18` |
-| Packed / unpacked bytes | 119,114 / 490,410 |
+| Packed / unpacked bytes | 119,179 / 490,614 |
 | Files | 8 |
-| SHA256 | `2d6b0c93968b867d4ae51e9f9e29807583bdb1f9e1c3b05690c50cdeacbc7472` |
+| SHA256 | `0823fc8d19759c967b7648e06a9c5cf367110f3998ec2f016b4257173130ba61` |
 | Binaries | `bin/projectgate.js`, `bin/projectgate-mcp.js` |
 
-The eight files are the manifest, README, LICENSE, CHANGELOG, two executable shims and two bundles. Runtime dependencies remain external normal npm dependencies; private workspace imports are rejected. Manifest/bin targets, missing lifecycle paths, fixture/source leakage, `node_modules`, credentials/runtime evidence exclusions, clean local/global install, and installed-package repack checks passed on both platforms. The Linux tarball differs slightly in compressed bytes; the retained artifact above is the Windows candidate.
+The eight files are the manifest, README, LICENSE, CHANGELOG, two executable shims and two bundles. Runtime dependencies remain external normal npm dependencies; private workspace imports are rejected. Manifest/bin targets, missing lifecycle paths, fixture/source leakage, `node_modules`, credentials/runtime evidence exclusions, clean local/global install, and installed-package repack checks passed on both platforms. The retained artifact above is the final Windows closure build, including the reconciled README and changelog; its full smoke validation passed. It is gitignored and was not published.
 
 Packed `--help`, exact `--version` = `0.2.0`, `doctor`, `init`, `inspect`, `contract --task`, and audit smoke passed. A real stdio MCP initialize request returned server `project-gate` with version `0.2.0`. Lifecycle tests exercise audit followed by selective verify and reports. Real Spring `verify` and JSON `report` both retained exit 2 for incomplete evidence and produced valid packets; this is the expected verdict behavior, not a CLI crash.
 
@@ -66,21 +71,21 @@ Packed `--help`, exact `--version` = `0.2.0`, `doctor`, `init`, `inspect`, `cont
 
 ## Release blockers and verdict
 
-All locally executable release gates passed. The request requires passing Ubuntu and Windows CI paths before the final release-ready claim. Equivalent local Windows and Ubuntu runs are proven, but **the new GitHub-hosted matrix has not run against the final reviewed commit**. Treat those two hosted results as the remaining strict release gate; no other critical/major product blocker was identified.
+The stale hosted-CI blocker is closed: both hosted jobs passed for the current product-source commit, and final local release validation passed after documentation reconciliation. Package smoke, clean tarball installation, exact CLI version, MCP handshake, and lifecycle/import checks passed. Flutter and Spring baselines passed; the real web audit correctly blocked actual target-project verification failures. No critical/major known product release blocker remains. The local action-version maintenance edit is explicitly distinguished from the hosted evidence above and should be checked by the next normal CI run.
 
-**NOT READY FOR 0.2.0 RELEASE**
+**READY FOR 0.2.0 RELEASE**
 
 ## Manual checklist
 
 1. Review the source diff, [release notes](RELEASE_NOTES_0_2_0.md), and anonymized dogfood evidence; commit the intended candidate.
-2. Run the validation workflow on that exact commit and confirm both hosted matrix jobs pass. Do not substitute an older commit's result.
+2. Confirm both hosted matrix jobs on the commit to be tagged, including the refreshed action references when this closure diff is committed. Recorded historical evidence must not be represented as a run of a newer commit.
 3. Recheck version, clean source state, package contents, and exact packed CLI/MCP identity after any changes. Rerun the release check if code changes.
-4. Reclassify readiness only after the outstanding CI gate is satisfied. Registry authentication, publication from `release/`, and any tag/release creation remain human actions; no publication command is offered while the verdict is NOT READY.
+4. Authenticate and confirm the intended npm account; manually publish from `release/`, never the private workspace root. Tag only the reviewed release commit. Publication, pushing, tagging, and GitHub Release creation were not performed during this task.
 
 ## Manual GitHub metadata recommendation
 
 - Description: `Independent evidence-based release gate for AI-built software.`
-- Website: `https://github.com/akifsen/project-gate#readme`
+- Website: `https://www.npmjs.com/package/@akifsen/project-gate`
 - Topics: `ai`, `developer-tools`, `coding-agents`, `quality-gate`, `release-gate`, `software-testing`, `mcp`, `playwright`, `cursor`, `codex`, `claude-code`, `ci`
 
 These are recommendations only; remote metadata was not edited.

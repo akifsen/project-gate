@@ -1,19 +1,30 @@
-# Project Gate 0.2.0
+# Project Gate v0.2.0
 
-Project Gate 0.2.0 expands evidence-based release checks from Node and PHP projects to mixed-stack repositories. It adds discovery and impact information for Dart/Flutter, Java/Kotlin with Maven or Gradle and Spring Boot, Python, .NET, Go, Rust, and Android projects.
+## Highlights
 
-The CLI reports module-specific technology and baseline information, preserves the source and confidence of detections, and uses manifest changes when deciding whether prior baseline evidence is stale. Native and mobile projects participate in discovery, impact analysis, and available baseline/test orchestration. Configured web apps can use runtime browser UI checks; Project Gate does not automate UI on emulators or physical devices.
+- Multi-stack repository and module discovery, including Dart/Flutter, Java/Kotlin, Spring Boot, Maven/Gradle, Python, .NET, Go, Rust, and Android, alongside Node and PHP.
+- Improved application/test classification, detection provenance, product surfaces, and manifest-based evidence invalidation. Unknown files remain accounted for.
+- Clearly separated task requirements become separate contract criteria without a model provider.
+- Windows and Ubuntu / Node 22 hosted release validation, clean tarball installation/repacking, exact CLI/MCP versions, and an actual MCP initialization handshake.
+- Public package lifecycle/version hardening, explicit Yarn/pnpm script dispatch, and stronger Composer script safety checks.
 
-Task text with clearly separated requirements can become separate contract criteria without a model provider. Audits do not install dependencies, and discovered commands are subject to tool readiness and known-mutator checks.
+Real repository validation passed Flutter analysis and 363 tests, and 25 offline Spring Boot/Maven tests. A Laravel/React build and TypeScript check passed; its PHPStan failures correctly blocked the application audit. Hosted platform evidence is recorded for commit `9c3b6ce9e300eea56faa5682910ac42d5c987c52` ([workflow run](https://github.com/akifsen/project-gate/actions/runs/35841504166)).
+
+## Installation
 
 ```sh
-npm install -g @akifsen/project-gate
+npm install -g @akifsen/project-gate@0.2.0
+```
+
+## Verification
+
+```sh
 projectgate --version
 projectgate doctor
 ```
 
-Release hardening adds validation-only Windows and Ubuntu CI lanes, removes repository-only lifecycle scripts from the public package, and resolves CLI/MCP versions from the public manifest. Package tests cover clean local/global installation, repacking, exact versions, CLI behavior, and a real MCP initialization handshake.
+## Known limitations
 
-Real repository dogfooding confirmed Flutter discovery and impact with passing analysis and 363 tests, and Spring Boot discovery with 25 passing offline Maven tests. A Laravel/React application exposed a Yarn built-in command collision; discovered Yarn/pnpm commands now use explicit `run`. Composer script indirection checks and TypeScript configuration invalidation were also strengthened.
+Native device UI automation is not provided. Static route extraction is partial, and dependencies must be prepared outside audit. Custom scripts and wrappers require repository trust. Passing baselines alone do not prove application acceptance criteria: the real web application was correctly blocked by its PHPStan failures.
 
-These application baselines do not imply a release verdict for the target projects. See [real-world validation](REAL_WORLD_VALIDATION.md) for complete limitations and [the release record](RELEASE_0_2_0.md) for current platform gate results. Publication remains manual.
+See [real-world validation](REAL_WORLD_VALIDATION.md) and [the release record](RELEASE_0_2_0.md) for the complete evidence. Publication remains a human action.
