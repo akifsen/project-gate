@@ -33,10 +33,10 @@ function run(command, args, options = {}) {
   return { status: result.status, output, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
 
-function pack(dryRun) {
+function pack(dryRun, cwd = releaseDir) {
   const args = ["pack", "--json"];
   if (dryRun) args.push("--dry-run");
-  const result = run("npm", args, { cwd: releaseDir });
+  const result = run("npm", args, { cwd });
   const start = result.stdout.indexOf("[");
   const end = result.stdout.lastIndexOf("]");
   if (start < 0 || end < start) throw new Error(`npm pack did not return JSON:\n${result.stdout}`);
@@ -121,6 +121,20 @@ function writeFixture(directory) {
   git(directory, ["commit", "-m", "base"]);
 }
 
+function assertPublicManifest(manifest) {
+  if (manifest.name !== "@akifsen/project-gate" || manifest.version !== expectedVersion) {
+    throw new Error(`Unexpected public package identity: ${manifest.name}@${manifest.version}`);
+  }
+  if (Object.keys(manifest.scripts ?? {}).length > 0) {
+    throw new Error(`Public package must not contain repository lifecycle scripts: ${Object.keys(manifest.scripts).join(", ")}`);
+  }
+}
+
+function assertPackedManifest(tarball) {
+  const manifest = JSON.parse(run("tar", ["-xOf", tarball, "package/package.json"]).stdout);
+  assertPublicManifest(manifest);
+}
+
 function writeGitBase(directory) {
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, "README.md"), "package smoke fixture\n");
@@ -190,12 +204,19 @@ async function mcpHandshake(prefix) {
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error(`MCP server did not answer initialize.\n${text}\n${stderr}`));
-    }, 8000);
+    }, 20000);
     child.stdout.on("data", (chunk) => {
       text += chunk.toString("utf8");
-      if (text.includes("\"id\":1") || text.includes("\"id\": 1")) {
+      const response = text.split(/\r?\n/).find((line) => {
+        try {
+          return JSON.parse(line).id === 1;
+        } catch {
+          return false;
+        }
+      });
+      if (response) {
         clearTimeout(timer);
-        resolve(text);
+        resolve(response);
       }
     });
     child.on("exit", (code) => {
@@ -204,7 +225,10 @@ async function mcpHandshake(prefix) {
     });
   });
   child.kill();
-  if (!response.includes("project-gate")) throw new Error(`Unexpected MCP response:\n${response}`);
+  const serverInfo = JSON.parse(response).result?.serverInfo;
+  if (serverInfo?.name !== "project-gate" || serverInfo.version !== expectedVersion) {
+    throw new Error(`Unexpected MCP response:\n${response}`);
+  }
 }
 
 function registryStatus() {
@@ -216,12 +240,15 @@ const tempPrefix = "projectgate-package-test-";
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), tempPrefix));
 let tarball = "";
 try {
+  assertPublicManifest(JSON.parse(fs.readFileSync(path.join(releaseDir, "package.json"), "utf8")));
+  run("npm", ["run", "build"]);
   const dry = pack(true);
   assertContents(dry);
   console.log(`dry-run ${dry.filename} files=${dry.files.length} unpacked=${dry.unpackedSize}`);
   const packed = pack(false);
   assertContents(packed);
   tarball = path.join(releaseDir, packed.filename);
+  assertPackedManifest(tarball);
   console.log(`pack ${packed.filename} size=${packed.size} unpacked=${packed.unpackedSize} files=${packed.files.length}`);
   const listed = run("tar", ["-tf", tarball], { cwd: releaseDir }).stdout;
   for (const entry of ["package/package.json", "package/README.md", "package/LICENSE", "package/bin/projectgate.js", "package/bin/projectgate-mcp.js", "package/dist/cli.js", "package/dist/mcp.js"]) {
@@ -233,10 +260,16 @@ try {
   fs.mkdirSync(app);
   run("npm", ["init", "-y"], { cwd: app });
   run("npm", ["install", tarball], { cwd: app });
+  const installedDir = path.join(app, "node_modules", "@akifsen", "project-gate");
+  assertPublicManifest(JSON.parse(fs.readFileSync(path.join(installedDir, "package.json"), "utf8")));
+  const repacked = pack(false, installedDir);
+  assertContents(repacked);
+  assertPackedManifest(path.join(installedDir, repacked.filename));
+  console.log(`repack installed package ${repacked.filename} files=${repacked.files.length}`);
   const help = run("npx", ["--no-install", "projectgate", "--help"], { cwd: app });
   if (!help.stdout.includes("audit")) throw new Error(help.stdout);
   const version = run("npx", ["--no-install", "projectgate", "--version"], { cwd: app });
-  if (!version.stdout.includes(expectedVersion)) throw new Error(version.stdout);
+  if (version.stdout.trim() !== expectedVersion) throw new Error(`Expected ${expectedVersion}, got ${version.stdout}`);
   if (version.stderr.includes("ExperimentalWarning")) throw new Error(version.stderr);
   const doctor = gate(app, ["doctor"], app);
   if (!doctor.includes("Storage") || !doctor.includes("healthy")) throw new Error(doctor);
@@ -294,7 +327,7 @@ try {
   const globalHelp = run("projectgate", ["--help"], { cwd: temp, env: isolatedEnv });
   if (!globalHelp.stdout.includes("audit")) throw new Error(globalHelp.output);
   const globalVersion = run("projectgate", ["--version"], { cwd: temp, env: isolatedEnv });
-  if (!globalVersion.stdout.includes(expectedVersion)) throw new Error(globalVersion.output);
+  if (globalVersion.stdout.trim() !== expectedVersion) throw new Error(`Expected ${expectedVersion}, got ${globalVersion.output}`);
   const globalDoctor = run("projectgate", ["doctor"], { cwd: temp, env: isolatedEnv });
   if (!globalDoctor.stdout.includes("healthy")) throw new Error(globalDoctor.output);
   if (globalDoctor.stderr.includes("ExperimentalWarning")) throw new Error(globalDoctor.stderr);

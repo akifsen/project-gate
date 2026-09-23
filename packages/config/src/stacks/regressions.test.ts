@@ -5,11 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoverRepository } from "../discover.js";
 import { initProject } from "../init.js";
 import { classifyProjectPath } from "./index.js";
-import { safeManifestScript } from "./tools.js";
+import { safeComposerScript, safeManifestScript } from "./tools.js";
 import * as stackTools from "./tools.js";
 
 describe("stack discovery regressions", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it("keeps Node source files as application while leaving unsupported service files unknown", () => {
     const root = temp();
@@ -80,6 +83,31 @@ describe("stack discovery regressions", () => {
     expect(discovery.commands).toEqual([]);
   });
 
+  it("selects Maven and Gradle wrappers for the current platform without requiring Java", () => {
+    const nativeProcess = process;
+    const cases = [
+      { platform: "win32", maven: "mvnw.cmd", gradle: "gradlew.bat" },
+      { platform: "linux", maven: "./mvnw", gradle: "./gradlew" },
+    ] as const;
+
+    for (const item of cases) {
+      vi.stubGlobal("process", { ...nativeProcess, platform: item.platform });
+      vi.spyOn(stackTools, "toolOnPath").mockReturnValue(false);
+
+      const maven = temp();
+      write(maven, "pom.xml", "<project />\n");
+      write(maven, "mvnw", "#!/bin/sh\n");
+      write(maven, "mvnw.cmd", "@echo off\n");
+      expect(moduleAt(discoverRepository(maven).modules, ".").commands.find((command) => command.id === "maven-test")?.command).toBe(item.maven);
+
+      const gradle = temp();
+      write(gradle, "build.gradle", "tasks.register('test')\n");
+      write(gradle, "gradlew", "#!/bin/sh\n");
+      write(gradle, "gradlew.bat", "@echo off\n");
+      expect(moduleAt(discoverRepository(gradle).modules, ".").commands.find((command) => command.id === "gradle-test")?.command).toBe(item.gradle);
+    }
+  });
+
   it("uses bun run for package scripts", () => {
     const root = temp();
     write(root, "package.json", JSON.stringify({ packageManager: "bun@1.2.0", scripts: { test: "node -e process.exit(0)" } }));
@@ -114,6 +142,24 @@ describe("stack discovery regressions", () => {
     expect(safeManifestScript({ lint: "eslint . --fix" }, "lint")).toBe(false);
     expect(safeManifestScript({ pretest: "npm run mutate", mutate: "prettier --write .", test: "vitest run" }, "test")).toBe(false);
     expect(safeManifestScript({ lint: "eslint . --check" }, "lint")).toBe(true);
+  });
+
+  it("rejects mutating Composer aliases and hooks, including array scripts", () => {
+    expect(safeComposerScript({ test: "@lint && phpunit", lint: "pint --parallel" }, "test")).toBe(false);
+    expect(safeComposerScript({ test: "@composer lint", lint: "pint --parallel" }, "test")).toBe(false);
+    expect(safeComposerScript({ test: "composer run-script lint", lint: "pint --parallel" }, "test")).toBe(false);
+    expect(safeComposerScript({ test: ["@lint:check", "phpunit"], "lint:check": "pint --parallel --test" }, "test")).toBe(true);
+    expect(safeComposerScript({ test: "phpunit", "pre-test": "@lint", lint: "pint --parallel" }, "test")).toBe(false);
+    expect(safeComposerScript({ test: "@first", first: "@second", second: "@first" }, "test")).toBe(false);
+    expect(safeComposerScript({ test: ["phpunit", 42] }, "test")).toBe(false);
+  });
+
+  it("does not auto-discover Composer tests that hide Pint behind an alias", () => {
+    const root = temp();
+    write(root, "composer.json", JSON.stringify({ scripts: { test: "@lint && phpunit", lint: "pint --parallel" } }));
+    write(root, "tests/ExampleTest.php", "<?php\n");
+
+    expect(moduleAt(discoverRepository(root).modules, ".").commands.some((command) => command.id === "composer-test")).toBe(false);
   });
 
   it("uses vendored Go modules in offline module commands", () => {

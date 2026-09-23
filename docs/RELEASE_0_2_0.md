@@ -1,0 +1,86 @@
+# 0.2.0 release readiness
+
+Date: 2026-09-23. Candidate: `@akifsen/project-gate@0.2.0`. Nothing was published, tagged, pushed, or changed in remote repository metadata.
+
+## Implemented
+
+- Validation-only Node 22 matrix for `ubuntu-latest` and `windows-latest`, with `fail-fast: false`. Both lanes run `npm ci`, Chromium setup, then canonical `npm run release:check`. Ubuntu also installs Playwright system dependencies.
+- Public package lifecycle leakage removed. Source `test:package` explicitly builds before packing; public `package.json` has no scripts. A clean installed package is repacked during smoke validation.
+- Public manifest is the single version authority for source, bundled CLI, and MCP; unresolved development versions report `0.0.0-dev`. Exact version checks cover clean local and isolated global installations.
+- Real dogfood fixed Yarn/pnpm script dispatch and exposed a TypeScript configuration invalidation gap. Composer alias/array/indirect script safety has regression coverage.
+- Product documentation now describes software-wide discovery and honest native runtime limits. Public claims no longer depend on an external review tool's brand.
+
+The adapter registry and normalized profile remain the extension boundary; no framework-specific discovery was added to core. Production workspace dependency review found no cycle. Another ecosystem can implement the adapter interface and register it with tests; additional runtime proof still needs an appropriate verifier.
+
+## Platform validation
+
+| Gate | Result |
+|---|---|
+| Windows, Node 22.23.2: clean `npm ci` | Passed |
+| Windows canonical release check | Passed: typecheck, lint, 27 files / 82 tests, build, tarball smoke |
+| Ubuntu 24.04.3 WSL, Linux Node 22.23.2 | Passed: clean `npm ci`, typecheck, lint, 27 files / 82 tests, build, tarball smoke |
+| Linux Node provenance | Official Linux tarball checked against published SHA256 sums |
+| Chromium setup | Windows browser checks passed; Linux required Chromium plus OS dependencies, matching the workflow |
+| GitHub-hosted `windows-latest` / `ubuntu-latest` jobs | Not run in this task; no pushed commit or hosted run is claimed |
+
+Initial Linux runs correctly failed without Chromium/system libraries. A 150 ms process-test startup assumption also failed under load; the test now gives Node 1 second to start while retaining the timeout, captured-output, and under-3-second termination assertions. The final complete runs above include all code fixes and no skipped failing tests.
+
+Local logs (gitignored): `.projectgate/runtime/release-020-npm-ci.log`, `release-020-windows-complete.log`, and `ubuntu-release-check-aVkWMd` in the same directory. These local executions validate the workflow command paths on both operating systems; they are not hosted CI attestations.
+
+## Real repository validation
+
+See [REAL_WORLD_VALIDATION.md](REAL_WORLD_VALIDATION.md) for commands, actual diff selection, classifications, and failed as well as successful attempts.
+
+| Repository | Discovery / impact | Executed evidence |
+|---|---|---|
+| Existing Flutter application | Dart/Flutter/Pub; 23 application files, 7 test changes, 5 surfaces | Analyze clean; 363 tests passed using existing cache, `--no-pub` |
+| Existing Spring Boot service | Java/Spring/Maven; 4 application files, 3 test changes, 7 surfaces | Offline Maven: 25 tests passed |
+| Existing Laravel/React/Vite application | PHP/TS, Composer/Yarn; 3 application files, 1 test change, 3 surfaces | Vite build and TypeScript check passed; Composer test chain stopped on 282 target PHPStan errors; audit correctly BLOCKED |
+
+General contract criteria intentionally remain unproved by baseline-only results. None of these target applications is being declared release-ready. Original repositories stayed clean; private paths and source evidence are excluded from public artifacts.
+
+## Package and CLI/MCP validation
+
+Retained artifact: `release/akifsen-project-gate-0.2.0.tgz`.
+
+| Field | Value |
+|---|---|
+| Name / version | `@akifsen/project-gate` / `0.2.0` |
+| License / engine | MIT / Node `>=22.18` |
+| Packed / unpacked bytes | 119,114 / 490,410 |
+| Files | 8 |
+| SHA256 | `2d6b0c93968b867d4ae51e9f9e29807583bdb1f9e1c3b05690c50cdeacbc7472` |
+| Binaries | `bin/projectgate.js`, `bin/projectgate-mcp.js` |
+
+The eight files are the manifest, README, LICENSE, CHANGELOG, two executable shims and two bundles. Runtime dependencies remain external normal npm dependencies; private workspace imports are rejected. Manifest/bin targets, missing lifecycle paths, fixture/source leakage, `node_modules`, credentials/runtime evidence exclusions, clean local/global install, and installed-package repack checks passed on both platforms. The Linux tarball differs slightly in compressed bytes; the retained artifact above is the Windows candidate.
+
+Packed `--help`, exact `--version` = `0.2.0`, `doctor`, `init`, `inspect`, `contract --task`, and audit smoke passed. A real stdio MCP initialize request returned server `project-gate` with version `0.2.0`. Lifecycle tests exercise audit followed by selective verify and reports. Real Spring `verify` and JSON `report` both retained exit 2 for incomplete evidence and produced valid packets; this is the expected verdict behavior, not a CLI crash.
+
+## Known limitations
+
+- Native device/emulator UI automation is unavailable; static surfaces and passing tests do not constitute native runtime proof.
+- Route parsing is bounded and partial. Custom scripts/wrappers remain trusted repository code; known-mutator inspection is not an execution sandbox.
+- Tool availability does not prove dependency readiness. Audits do not install dependencies.
+- Source-workspace npm audit reported two moderate development-only Vitest/mocker advisories requiring a major test-tool upgrade. The production-only audit reported zero vulnerabilities at validation time. No forced upgrade was mixed into this release task.
+- macOS and live native devices were not exercised.
+
+## Release blockers and verdict
+
+All locally executable release gates passed. The request requires passing Ubuntu and Windows CI paths before the final release-ready claim. Equivalent local Windows and Ubuntu runs are proven, but **the new GitHub-hosted matrix has not run against the final reviewed commit**. Treat those two hosted results as the remaining strict release gate; no other critical/major product blocker was identified.
+
+**NOT READY FOR 0.2.0 RELEASE**
+
+## Manual checklist
+
+1. Review the source diff, [release notes](RELEASE_NOTES_0_2_0.md), and anonymized dogfood evidence; commit the intended candidate.
+2. Run the validation workflow on that exact commit and confirm both hosted matrix jobs pass. Do not substitute an older commit's result.
+3. Recheck version, clean source state, package contents, and exact packed CLI/MCP identity after any changes. Rerun the release check if code changes.
+4. Reclassify readiness only after the outstanding CI gate is satisfied. Registry authentication, publication from `release/`, and any tag/release creation remain human actions; no publication command is offered while the verdict is NOT READY.
+
+## Manual GitHub metadata recommendation
+
+- Description: `Independent evidence-based release gate for AI-built software.`
+- Website: `https://github.com/akifsen/project-gate#readme`
+- Topics: `ai`, `developer-tools`, `coding-agents`, `quality-gate`, `release-gate`, `software-testing`, `mcp`, `playwright`, `cursor`, `codex`, `claude-code`, `ci`
+
+These are recommendations only; remote metadata was not edited.

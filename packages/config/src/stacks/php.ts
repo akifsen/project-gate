@@ -1,6 +1,6 @@
 import { emptyContribution, fact, type FileClassification, type ModuleContribution, type ModuleScan, type StackAdapter } from "./types.js";
 import { laravelRoutes } from "./surfaces.js";
-import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf, toolOnPath, readOnlyScript } from "./tools.js";
+import { abs, command, globs, moduleFile, modulePrefix, readJson, recordOf, toolOnPath, safeComposerScript } from "./tools.js";
 
 export const phpAdapter: StackAdapter = {
   id: "php",
@@ -30,13 +30,15 @@ export const phpAdapter: StackAdapter = {
     if (laravel) result.frameworks.push(fact("Laravel", scan.exists("artisan") ? "artisan" : "composer.json laravel/framework", "php"));
     else if (composer) result.frameworks.push(fact("PHP", composerPath, "php"));
     if (composer) result.packageManagers.push(fact("Composer", composerPath, "php"));
-    const scripts = recordOf(composer?.scripts);
+    const scripts = composer?.scripts && typeof composer.scripts === "object" && !Array.isArray(composer.scripts)
+      ? composer.scripts as Record<string, unknown>
+      : {};
     const prefix = modulePrefix(scan.path);
     const patterns = globs(scan.path, [".php"]);
     const cwd = scan.path === "." ? {} : { cwd: scan.path };
     const phpReady = toolOnPath("php");
     const composerReady = phpReady && toolOnPath("composer");
-    if (typeof scripts.test === "string" && readOnlyScript(scripts.test)) {
+    if (safeComposerScript(scripts, "test")) {
       result.commands.push(command({ id: `${prefix}composer-test`, title: "Composer test", command: "composer", args: ["test"], group: "Test", invalidatesOn: patterns, ...cwd, ready: composerReady }));
     } else if (scan.exists("artisan") && (scan.exists("phpunit.xml") || scan.exists("phpunit.xml.dist") || scan.exists("tests") || scan.files.some((file) => file.includes("/tests/")))) {
       result.commands.push(command({ id: `${prefix}artisan-test`, title: "Artisan test", command: "php", args: ["artisan", "test"], group: "Test", invalidatesOn: patterns, ...cwd, ready: phpReady }));

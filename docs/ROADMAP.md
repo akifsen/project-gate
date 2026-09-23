@@ -1,13 +1,13 @@
 # Roadmap
 
-V1 is the local evidence loop: contract, impact, six verifiers, selective re-verify, release packet, CLI, and MCP.
+V1 is the local evidence loop: contract, impact, six verifiers, selective re-verify, release packet, CLI, and MCP. It includes native/mobile discovery, impact analysis, and baseline/test orchestration, alongside configured web runtime UI checks. Device-level UI automation remains outside V1.
 
 ## Not in V1
 
 - Hosted runners and a control plane
 - Billing, SSO, and organization administration
 - A product dashboard
-- Native mobile and desktop testing
+- Emulator and physical-device UI automation
 - Autonomous patch application
 - Penetration testing
 - A replacement test framework, browser engine, or accessibility engine

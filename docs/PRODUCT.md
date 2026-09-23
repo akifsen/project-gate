@@ -1,6 +1,6 @@
 # Product
 
-Project Gate is a local Definition-of-Done and release-evidence engine for AI-built web software. It answers whether a change is actually complete.
+Project Gate is an independent, evidence-based release gate for AI-built software. It answers whether a change is actually complete by connecting its contract to impact, verification, evidence, and a verdict.
 
 It is not a coding agent, a test generator, a Playwright replacement, a SonarQube clone, a review chatbot, or a numeric quality score.
 
@@ -32,6 +32,6 @@ The verdict is one of `PASS`, `PASS_WITH_HUMAN_REVIEW`, `BLOCKED`, or `INCOMPLET
 
 ## V1 scope
 
-Web applications. First useful targets are React, Next.js, Laravel, shell commands, HTTP APIs, and browser apps. Those stacks are adapters and path heuristics, not a hardcoded core.
+Web applications and native/mobile projects. Project Gate discovers supported stacks, maps changed files to affected surfaces, and plans or runs available build, test, lint, and typecheck baselines. Configured web runtime UI checks use the existing browser verifier. Native and mobile projects receive discovery, impact analysis, and test orchestration; Project Gate does not automate UI on emulators or physical devices.
 
-V1 does not include hosted runners, billing, SSO, organization administration, native mobile or desktop testing, autonomous code repair, a custom browser, a custom accessibility engine, or a dashboard application. The human-readable review surface is the HTML release report.
+V1 does not include hosted runners, billing, SSO, organization administration, autonomous code repair, a custom browser, a custom accessibility engine, or a dashboard application. The human-readable review surface is the HTML release report.

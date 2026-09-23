@@ -27,7 +27,8 @@ describe("runProcess", () => {
       command: process.execPath,
       args: ["-e", "console.log('started'); setInterval(() => {}, 1000)"],
       cwd: process.cwd(),
-      timeoutMs: 150,
+      // Leave enough time for Node startup on a loaded CI worker before testing termination.
+      timeoutMs: 1_000,
     });
 
     expect(result).toMatchObject({ exitCode: null, timedOut: true, cancelled: false });

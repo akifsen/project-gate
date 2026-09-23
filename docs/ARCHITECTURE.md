@@ -20,11 +20,11 @@ packages/cli  packages/mcp  integrations/agents
 
 ## Technology discovery
 
-`packages/config/src/stacks` registers eight adapters: Node, PHP, Dart, Java/JVM, Python, .NET, Go, and Rust. Each adapter contributes manifest facts, classification, commands, capabilities, and static route extraction. A repository may have several adapters in one module and several independently owned modules. Core and MCP consume the same `discoverRepository` result; they do not implement a second discovery pipeline.
+`packages/config/src/stacks` registers adapters for Node, PHP, Dart/Flutter, Java/JVM, Python, .NET, Go, and Rust, with Android project signals. Each adapter contributes manifest facts, classification, commands, capabilities, and static route or surface extraction. A repository may have several adapters in one module and several independently owned modules. Core and MCP consume the same `discoverRepository` result; they do not implement a second discovery pipeline.
 
 The legacy language/framework string arrays remain available. Additive `detections`, `manifests`, `routes`, and `productSurfaces` retain adapter, source, and confidence. Command readiness means launch prerequisites were found, not that tests pass or dependencies are ready. Missing SDKs remain visible in module commands but are excluded from automatically executable baselines.
 
-Command invalidation includes adapter source patterns and module manifest files. Explicit configuration wins over discovery. Naming-based screens and reverse-import effects remain inferred; a parsed route is static evidence, never proof of runtime behavior. Laravel impact route identifiers now include HTTP method to distinguish endpoints sharing a URI.
+Command invalidation includes adapter source patterns and module manifest files. Explicit configuration wins over discovery. Native and mobile surfaces participate in impact analysis and baseline/test planning. Naming-based screens and reverse-import effects remain inferred; a parsed route is static evidence, never proof of runtime behavior. Configured web runtime UI checks use the browser verifier; there is no emulator or device-level UI automation. Laravel impact route identifiers include HTTP method to distinguish endpoints sharing a URI.
 
 ## Run lifecycle
 

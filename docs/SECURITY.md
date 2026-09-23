@@ -28,7 +28,7 @@ Automatic discovery also recognizes ecosystem baseline commands and existing man
 
 Flutter baselines use `--no-pub`; Maven and Gradle lifecycle commands use offline mode; .NET uses `--no-restore`; Cargo uses offline/locked mode and requires a lockfile. Go uses cached or vendored modules with downloads disabled. Missing dependencies require project setup outside audit. Maven/Gradle wrapper distributions must already be provisioned: their bootstrap scripts and custom build plugins can have behavior outside the lifecycle offline flags. Pure Dart tests require explicit configuration because `dart test` has no equivalent of Flutter's `--no-pub` option.
 
-Shell output is bounded. Commands have configurable deadlines, process-tree termination, and optional programmatic `AbortSignal` cancellation. A cancelled check is unknown, not proof of a product defect. This development task used an explicitly authorized external JEV review; JEV is not added as a runtime dependency of Project Gate.
+Shell output is bounded. Commands have configurable deadlines, process-tree termination, and optional programmatic `AbortSignal` cancellation. A cancelled check is unknown, not proof of a product defect.
 
 ## Reports
 

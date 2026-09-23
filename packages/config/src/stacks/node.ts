@@ -17,7 +17,8 @@ export const nodeAdapter: StackAdapter = {
   routes: (file, text) => /\.[cm]?[jt]sx?$/.test(file) ? nodeRoutes(file, text) : [],
   classify(file: string): FileClassification | null {
     const base = file.split("/").pop() ?? file;
-    if (/(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/.test(file)) {
+    if (/(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/.test(file)
+      || /^tsconfig(?:\.[^/]+)?\.json$/.test(base)) {
       return classified("config", "CONFIGURATION", "CONFIG", "observed", "node-manifest");
     }
     if (/(^|\/)[^/]*\.config\.[cm]?[jt]sx?$/.test(file)) return classified("config", "CONFIGURATION", "CONFIG", "observed", "node-config");
@@ -101,8 +102,7 @@ function packageManager(scan: ModuleScan, pkg: Record<string, unknown>): string 
 }
 
 function scriptInvocation(manager: string, script: string): { command: string; args: string[] } {
-  if (manager === "yarn") return { command: "yarn", args: [script] };
-  if (manager === "pnpm") return { command: "pnpm", args: script === "test" ? ["test"] : ["run", script] };
+  if (manager === "yarn" || manager === "pnpm") return { command: manager, args: ["run", script] };
   if (manager === "bun") return { command: "bun", args: ["run", script] };
   if (script === "test") return { command: "npm", args: ["test"] };
   return { command: "npm", args: ["run", script] };

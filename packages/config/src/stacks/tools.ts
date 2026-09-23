@@ -37,6 +37,35 @@ export function safeManifestScript(scripts: Record<string, string>, name: string
   return true;
 }
 
+// Composer scripts can be strings or ordered arrays and can call other named
+// scripts with @name. Check the hooks Composer runs around the requested script
+// as well, and fail closed for malformed bodies, unresolved references, or cycles.
+// @composer and direct Composer commands can dispatch arbitrary scripts, so a
+// possible false positive is safer than trying to infer their behavior here.
+export function safeComposerScript(scripts: Record<string, unknown>, name: string, seen = new Set<string>()): boolean {
+  if (seen.has(name)) return false;
+  const next = new Set(seen).add(name);
+  for (const key of [`pre-${name}`, name, `post-${name}`]) {
+    if (!(key in scripts)) continue;
+    const body = scripts[key];
+    const commands = typeof body === "string" ? [body] : Array.isArray(body) && body.every((item) => typeof item === "string") ? body as string[] : null;
+    if (!commands || commands.some((script) => !readOnlyComposerCommand(scripts, script, next))) return false;
+  }
+  return name in scripts;
+}
+
+function readOnlyComposerCommand(scripts: Record<string, unknown>, script: string, seen: Set<string>): boolean {
+  if (!script.trim() || /(?:^|[\s;&|])@?composer(?:\.phar)?(?:\s|$)/i.test(script) || !readOnlyScript(script)) return false;
+  for (const match of script.matchAll(/@([\w:.-]+)/g)) {
+    const referenced = match[1];
+    if (!referenced) return false;
+    if (referenced === "composer") return false;
+    if (["php", "putenv", "no_additional_args", "additional_args"].includes(referenced)) continue;
+    if (!(referenced in scripts) || !safeComposerScript(scripts, referenced, seen)) return false;
+  }
+  return true;
+}
+
 export function modulePrefix(modulePath: string): string {
   if (modulePath === ".") return "";
   return `${modulePath.replaceAll("/", "-")}-`;

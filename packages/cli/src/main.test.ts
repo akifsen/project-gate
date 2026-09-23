@@ -21,7 +21,8 @@ describe("cli", () => {
     expect(help.out).toContain("doctor");
     const version = capture();
     expect(await runCli(["--version"], version)).toBe(0);
-    expect(version.out.trim()).toBe("0.1.0");
+    const releaseManifest = JSON.parse(fs.readFileSync(new URL("../../../release/package.json", import.meta.url), "utf8")) as { version: string };
+    expect(version.out.trim()).toBe(releaseManifest.version);
     expect(fs.existsSync(path.join(root, ".projectgate", "contract.yml"))).toBe(false);
     expect(fs.existsSync(path.join(root, ".projectgate", "contract.template.yml"))).toBe(true);
     expect(io.out).toContain("projectgate contract --task");

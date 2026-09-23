@@ -1,4 +1,4 @@
-# Multi-stack discovery validation — 0.2.0 candidate
+# Multi-stack discovery validation — 0.2.0 candidate record
 
 Validation date: 2026-09-23. No package was published.
 
@@ -27,24 +27,26 @@ Impact records every changed file in a broad category. Resolved Java and Dart im
 
 “Baseline” below describes discovery/planning, conditional on tooling and setup. It does not mean that ecosystem's SDK tests were run during this task.
 
-| Technology | Discovery | Classification | Baseline | Surfaces / boundaries |
-|---|---|---|---|---|
-| Node / JS / TS | Yes; npm/pnpm/yarn/bun | Yes | Existing recognized scripts; readiness and known-mutator checks | Static HTTP and router patterns |
-| React / Vite / Next / Vue / Nuxt / Svelte / Angular | Manifest/config signals | Yes, including Svelte | Existing scripts only | Partial; React/Next route patterns, inferred UI components |
-| PHP / Laravel | Yes | Yes | Composer, Artisan, existing PHPUnit/Pest | Literal routes with distinct HTTP verbs; dynamic groups limited |
-| Dart / Flutter | Confirmed Flutter SDK dependency | Yes; generated/test/screen files | Flutter analyze/test with `--no-pub`; Dart analyze | Inferred mobile screens and literal navigation paths; no native UI automation |
-| Java / Kotlin / Spring Boot | Maven/Gradle manifests, wrappers, Spring signals | Yes | Offline test; verify/check surfaced as optional capabilities | Literal Spring mappings; explicit import relationships; dynamic mappings unresolved |
-| Android | Android Gradle plugin/manifest signals | Yes | Unit test discovery; instrumentation is not auto-started | No emulator/device surface verification |
-| Python / Django / FastAPI / Flask | Common manifests/configuration | Yes | Configured pytest/Django/unittest and available lint tools | Partial literal decorators/URL patterns |
-| .NET / C# / F# / ASP.NET | Project/solution metadata | Yes | Build or test with `--no-restore` | Partial controller/minimal API mappings |
-| Go | Module/source detection | Yes | Test/vet using cached or vendored modules; downloads disabled | Common literal HTTP mappings; inferred CLI entry |
-| Rust | Cargo/source detection | Yes | Offline/locked test; lockfile required; optional capability reporting | Inferred CLI entry in profile; no Rust HTTP/public API parser |
-| Unsupported source | Explicit unknown | Preserved, including deletions | Explicit configured commands remain usable | No invented mapping |
-| Project Gate internals | Explicit internal category | Preserved separately | Not application evidence | No product surfaces |
+| Technology | Discovery | Classification | Baseline | Runtime UI | Surfaces / boundaries |
+|---|---|---|---|---|---|
+| Node / JS / TS | Yes; npm/pnpm/yarn/bun | Yes | Existing recognized scripts; readiness and known-mutator checks | Configured browser checks for a web app | Static HTTP and router patterns |
+| React / Vite / Next / Vue / Nuxt / Svelte / Angular | Manifest/config signals | Yes, including Svelte | Existing scripts only | Configured browser checks for web UI | Partial; React/Next route patterns, inferred UI components |
+| PHP / Laravel | Yes | Yes | Composer, Artisan, existing PHPUnit/Pest | Configured browser checks for a web app | Literal routes with distinct HTTP verbs; dynamic groups limited |
+| Dart / Flutter | Confirmed Flutter SDK dependency | Yes; generated/test/screen files | Flutter analyze/test with `--no-pub`; Dart analyze | Mobile discovery/impact/baseline/test orchestration; no device UI automation | Inferred mobile screens and literal navigation paths |
+| Java / Kotlin / Spring Boot | Maven/Gradle manifests, wrappers, Spring signals | Yes | Offline test; verify/check surfaced as optional capabilities | Configured browser checks for a web app; no Android device UI automation | Literal Spring mappings; explicit import relationships; dynamic mappings unresolved |
+| Android | Android Gradle plugin/manifest signals | Yes | Unit test discovery; instrumentation is not auto-started | Mobile discovery/impact/baseline/test orchestration; no emulator/device UI automation | No emulator/device surface verification |
+| Python / Django / FastAPI / Flask | Common manifests/configuration | Yes | Configured pytest/Django/unittest and available lint tools | Configured browser checks for a web app | Partial literal decorators/URL patterns |
+| .NET / C# / F# / ASP.NET | Project/solution metadata | Yes | Build or test with `--no-restore` | Configured browser checks for a web app | Partial controller/minimal API mappings |
+| Go | Module/source detection | Yes | Test/vet using cached or vendored modules; downloads disabled | Configured browser checks when it hosts a web app | Common literal HTTP mappings; inferred CLI entry |
+| Rust | Cargo/source detection | Yes | Offline/locked test; lockfile required; optional capability reporting | No runtime UI discovery claim | Inferred CLI entry in profile; no Rust HTTP/public API parser |
+| Unsupported source | Explicit unknown | Preserved, including deletions | Explicit configured commands remain usable | No invented runtime UI support | No invented mapping |
+| Project Gate internals | Explicit internal category | Preserved separately | Not application evidence | Not application evidence | No product surfaces |
+
+Browser runtime checks require an explicitly configured application and UI states/routes. Native and mobile projects receive discovery, impact analysis, and baseline/test orchestration, but Project Gate does not automate UI on emulators or physical devices.
 
 ## Validation and results
 
-`npm run release:check` passed: typecheck, lint, **25 test files / 74 tests**, and package smoke. `npm run build` also passed. Package smoke includes `npm pack --dry-run`, real `npm pack`, tarball-content checks, a clean local install, isolated global-prefix install, CLI help/version/doctor/inspect/audit, and an MCP initialize handshake. The expected missing-runtime audit returns `INCOMPLETE_EVIDENCE` rather than a fake pass.
+The previous Windows local candidate check recorded typecheck, lint, **25 test files / 74 tests**, build, and package smoke. The package smoke included `npm pack --dry-run`, real `npm pack`, tarball-content checks, a clean local install, isolated global-prefix install, CLI help/version/doctor/inspect/audit, and an MCP initialize handshake. Treat that as historical candidate evidence; current release readiness is tracked in [the 0.2.0 release record](RELEASE_0_2_0.md). No Ubuntu or remote CI pass is claimed here.
 
 The test fixtures cover React/Vite, Next, Laravel, Flutter, Maven/Spring, Gradle/Kotlin/Spring, FastAPI, Django, ASP.NET, Go, Rust, Android, unknown files, internal files, and mixed modules. Regressions cover provenance, unavailable tools, mutating script modes, Go vendoring, Cargo prerequisites, repeated init, reverse imports, deadlines, cancellation, contract splitting, and selective re-verification. Browser avatar lifecycle coverage remains passing.
 
@@ -57,26 +59,16 @@ The test fixtures cover React/Vite, Next, Laravel, Flutter, Maven/Spring, Gradle
 
 Local evidence is stored under `.projectgate/runtime/multistack-release-check.log`; the final package-only rerun is recorded in `.projectgate/runtime/multistack-package-check.log`. Runtime logs are gitignored.
 
-## JEV review
-
-JEV was used with explicit permission to send limited code/test evidence. Its initial selected-diff review requested escalation due to low confidence and broad scope; this was not presented as approval. A separate focused code review identified concrete issues in Windows termination, Go vendoring, Rust lockfiles, Laravel method identity, reverse-scan reads, Dart self-package imports, and indirect script checks. Those issues were corrected and covered by subsequent checks.
-
-JEV verified the recorded test/package/module/version claims against the release log. The evidence explicitly does **not** prove native Flutter widget execution or real Spring/Maven execution. JEV was not added as a runtime dependency, and no LLM is required for discovery or baseline planning.
-
 ## Known limitations
 
-- Validation ran on Windows/Node 22.20.0. Linux/macOS command generation is implemented; execution on those operating systems was not performed here.
-- Flutter, Maven, Gradle, Python, .NET, Go, and Cargo application suites were not executed against production repositories. This task validates realistic discovery fixtures and Project Gate's orchestration, not native SDK correctness.
+- Earlier validation ran on Windows/Node 22.20.0. Linux/macOS command generation is implemented; execution on those operating systems was not performed in that validation.
+- That earlier validation did not execute ecosystem application suites against real repositories. Subsequent Flutter, Spring, and web dogfooding is recorded separately in [REAL_WORLD_VALIDATION.md](REAL_WORLD_VALIDATION.md).
 - Route extraction is bounded static parsing. Dynamic expressions, composed prefixes, framework-specific routing DSLs, annotations outside recognized patterns, and external dependencies can remain unresolved. Source snippets are limited to 200 KB; reverse traversal is bounded to eight steps.
 - Executable presence is not proof that packages, Java distributions, test libraries, devices, or cached dependencies are installed. Failures require setup outside audit. Wrapper bootstrap scripts/custom plugins are trusted repository code and can exceed lifecycle offline guarantees.
 - Manifest script inspection rejects known mutations and common indirection, but does not sandbox arbitrary executable scripts. Explicit commands and wrappers require repository trust.
 - Pure Dart tests require explicit configuration because `dart test` lacks Flutter's `--no-pub` flag. No platform build, native runtime verifier, emulator, device farm, or automatic dependency installer was added.
 - Tests supplied as source/configuration are detected; quality-plugin execution is not claimed merely from a dependency name. No architecture rules are imposed by adapters.
 
-## Release recommendation
+## Release status
 
-The registry reported `@akifsen/project-gate` **0.1.0** during validation. The checkout already prepared **0.2.0**; retain that minor release candidate for this feature expansion. No additional version bump or publication was performed.
-
-## Verdict
-
-READY FOR NEXT RELEASE
+This candidate record does not determine current release readiness. See [the 0.2.0 release record](RELEASE_0_2_0.md), which supersedes the old readiness verdict. No publication is claimed here.
